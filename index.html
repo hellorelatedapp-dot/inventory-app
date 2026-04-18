@@ -152,16 +152,38 @@ tr:hover td{background:var(--accent-light)}
 .product-img{width:40px;height:40px;border-radius:8px;object-fit:cover;border:1px solid var(--border)}
 .product-img-placeholder{width:40px;height:40px;border-radius:8px;background:var(--accent-bg);display:flex;align-items:center;justify-content:center;font-size:18px;border:1px solid var(--border)}
 @media(max-width:768px){
-  .sidebar{width:100%;height:auto;position:relative}
+  .sidebar{width:100%;height:auto;position:relative;flex-direction:column}
   .main{margin-left:0}
-  .stats-grid{grid-template-columns:1fr 1fr}
+  .stats-grid{grid-template-columns:1fr 1fr;gap:10px}
   .form-row,.form-row3{grid-template-columns:1fr}
   .cat-grid{grid-template-columns:1fr}
-  th,td{padding:7px 10px;font-size:12px}
-  .topbar{flex-wrap:wrap;gap:6px}
-  nav{display:flex;flex-wrap:wrap;padding:6px}
-  .nav-item{padding:6px 12px;font-size:12px}
+  th,td{padding:6px 8px;font-size:11px}
+  .topbar{flex-wrap:wrap;gap:6px;padding:10px 14px}
+  .topbar h2{flex:1;font-size:14px}
+  .content{padding:10px 12px}
+  .search-wrap{width:100%;order:5}
+  nav{display:flex;flex-wrap:wrap;padding:4px 10px;gap:2px;border-bottom:1px solid var(--sidebar-border)}
+  .nav-item{padding:6px 10px;font-size:12px;border-left:none;border-radius:8px;flex-shrink:0}
+  .nav-item.active{border-left:none}
   .nav-section{display:none}
+  .sidebar-bottom{padding:8px 14px}
+  .theme-switcher{gap:8px}
+  .theme-dot{width:22px;height:22px}
+  .stat-card{padding:12px 14px}
+  .stat-card .value{font-size:20px}
+  .stat-card .label{font-size:10px}
+  /* Таблото - двете секции вертикално */
+  div[style*="grid-template-columns:1fr 1fr;gap:16px"]{display:flex!important;flex-direction:column!important;gap:12px!important}
+  .table-wrap{border-radius:10px;overflow-x:auto}
+  table{min-width:500px}
+  .actions{gap:3px}
+  .icon-btn{width:25px;height:25px;font-size:11px}
+  .btn{padding:7px 12px;font-size:12px}
+  .btn-sm{padding:4px 8px;font-size:11px}
+  .modal{padding:16px;width:95vw!important}
+  .form-actions{flex-direction:column}
+  .form-actions .btn{width:100%;justify-content:center}
+  .alert-banner{font-size:12px;flex-wrap:wrap}
 }
 </style>
 </head>
@@ -564,7 +586,7 @@ function renderDashboard(el){
       <div class="stat-card ${outOfStock>0?'danger':'good'}"><div class="label">Изчерпани</div><div class="value">${outOfStock}</div><div class="sub">нулево количество</div></div>
       <div class="stat-card"><div class="label">Активни наеми</div><div class="value">${activeRentals}</div><div class="sub">${todayMov} движения днес</div></div>
     </div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+    <div class="dash-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
       <div class="table-wrap">
         <div class="table-header"><h3>⚠️ Ниски наличности</h3></div>
         ${lowStock===0&&outOfStock===0?`<div class="empty"><p>✅ Всички наличности са OK</p></div>`:`
@@ -783,7 +805,7 @@ function renderReports(el){
       <div class="stat-card"><div class="label">Общо входове</div><div class="value">${totalIn}</div><div class="sub">единици</div></div>
       <div class="stat-card"><div class="label">Общо изходи</div><div class="value">${totalOut}</div><div class="sub">единици</div></div>
     </div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+    <div class="dash-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
       <div class="table-wrap">
         <div class="table-header"><h3>По категории</h3></div>
         <table><tbody>
