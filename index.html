@@ -133,6 +133,15 @@ tr:hover td{background:var(--accent-light)}
 .rental-status-returned{background:var(--bg);color:var(--muted)}
 .rental-status-overdue{background:#fdf0f0;color:#e05555}
 .rental-status-cancelled{background:var(--bg);color:var(--muted)}
+.badge-purple{background:#f3e8ff;color:#7c3aed}
+.badge-orange{background:#fff3e0;color:#e65100}
+.status-available{background:#e8f5ed;color:#3d6b50}
+.status-ordered{background:#e8f0fd;color:#2559a8}
+.status-received{background:#e8f5ed;color:#2e7d32}
+.status-reserved{background:#fff8e1;color:#f57f17}
+.status-sent{background:#fff3e0;color:#e65100}
+.status-rented{background:#fce4ec;color:#c2185b}
+.status-depleted{background:#fdf0f0;color:#e05555}
 .barcode-btn{display:flex;align-items:center;gap:6px;padding:6px 10px;border:1px dashed var(--border);border-radius:7px;background:var(--bg);cursor:pointer;font-size:12px;color:var(--muted);margin-top:4px;transition:.15s}
 .barcode-btn:hover{border-color:var(--accent);color:var(--accent)}
 #barcode-video{width:100%;border-radius:8px;margin-top:8px;display:none}
@@ -142,6 +151,18 @@ tr:hover td{background:var(--accent-light)}
 .alert-banner{background:var(--warn-bg);border:1px solid #f5d9a8;border-radius:10px;padding:12px 16px;margin-bottom:16px;display:flex;align-items:center;gap:10px;font-size:13px;color:var(--warn)}
 .product-img{width:40px;height:40px;border-radius:8px;object-fit:cover;border:1px solid var(--border)}
 .product-img-placeholder{width:40px;height:40px;border-radius:8px;background:var(--accent-bg);display:flex;align-items:center;justify-content:center;font-size:18px;border:1px solid var(--border)}
+@media(max-width:768px){
+  .sidebar{width:100%;height:auto;position:relative}
+  .main{margin-left:0}
+  .stats-grid{grid-template-columns:1fr 1fr}
+  .form-row,.form-row3{grid-template-columns:1fr}
+  .cat-grid{grid-template-columns:1fr}
+  th,td{padding:7px 10px;font-size:12px}
+  .topbar{flex-wrap:wrap;gap:6px}
+  nav{display:flex;flex-wrap:wrap;padding:6px}
+  .nav-item{padding:6px 12px;font-size:12px}
+  .nav-section{display:none}
+}
 </style>
 </head>
 <body class="theme-rose">
@@ -261,6 +282,30 @@ tr:hover td{background:var(--accent-light)}
       <div class="form-group">
         <label>Срок на годност</label>
         <input type="date" id="p-expiry">
+      </div>
+    </div>
+    <div class="form-group">
+      <label>Статус</label>
+      <select id="p-status" onchange="toggleStatusDates(this.value)">
+        <option value="available">✅ Наличен</option>
+        <option value="ordered">🔵 Поръчан</option>
+        <option value="received">📦 Получен</option>
+        <option value="reserved">🟡 Резервиран</option>
+        <option value="sent">🚚 Изпратен на събитие</option>
+        <option value="rented">🤝 Даден под наем</option>
+        <option value="depleted">🔴 Изчерпан</option>
+      </select>
+    </div>
+    <div id="status-dates" style="display:none">
+      <div class="form-row">
+        <div class="form-group">
+          <label>Дата на поръчка</label>
+          <input type="date" id="p-ordered-date">
+        </div>
+        <div class="form-group">
+          <label>Очаквана дата на получаване</label>
+          <input type="date" id="p-expected-date">
+        </div>
       </div>
     </div>
     <div class="form-group">
@@ -491,12 +536,28 @@ function renderDashboard(el){
   const today=new Date().toISOString().slice(0,10);
   const todayMov=movements.filter(m=>m.created_at?.startsWith(today)).length;
 
+  // Напомняния за поръчани артикули
+  const deliveryReminders=products.filter(p=>p.status==='ordered'&&p.expected_date&&p.expected_date<=today);
+  // Конфликти - поръчан артикул очакван след събитие
+  const eventConflicts=products.filter(p=>{
+    if(p.status!=='ordered'||!p.expected_date)return false;
+    return rentals.some(r=>r.status==='active'&&r.event_date&&p.expected_date>r.event_date&&
+      (r.rental_items||[]).some(i=>i.product_id===p.id));
+  });
+
   el.innerHTML=`
   <div class="topbar"><h2>Табло</h2>
     <button class="btn btn-primary" onclick="openMovementModal()">+ Движение</button>
   </div>
   <div class="content">
     ${overdueRentals>0?`<div class="alert-banner">⚠️ <strong>${overdueRentals} наема</strong> са просрочени и чакат връщане!</div>`:''}
+    ${deliveryReminders.map(p=>`<div class="alert-banner" style="background:#e8f0fd;border-color:#3a7bd5;color:#2559a8">
+      📦 Получи ли поръчката "<strong>${p.name}</strong>" от ${p.suppliers?.name||'доставчик'}? Очакваше се на ${p.expected_date}
+      <button class="btn btn-sm" style="margin-left:auto;background:#2559a8;color:#fff" onclick="markReceived('${p.id}')">Маркирай като получен</button>
+    </div>`).join('')}
+    ${eventConflicts.map(p=>`<div class="alert-banner" style="background:#fdf0f0;border-color:#e05555;color:#e05555">
+      ⚠️ "<strong>${p.name}</strong>" се очаква на ${p.expected_date} но е нужен за предстоящо събитие!
+    </div>`).join('')}
     <div class="stats-grid">
       <div class="stat-card good"><div class="label">Продукти</div><div class="value">${total}</div><div class="sub">${categories.length} категории</div></div>
       <div class="stat-card ${lowStock>0?'warn':'good'}"><div class="label">Ниски наличности</div><div class="value">${lowStock}</div><div class="sub">под минимума</div></div>
@@ -569,7 +630,10 @@ function renderProducts(el){
       </tr></thead><tbody>
       ${filtered.length===0?`<tr><td colspan="8"><div class="empty"><p>Няма намерени продукти</p></div></td></tr>`:
         filtered.map(p=>{
-          const st=p.quantity===0?['badge-red','Изчерпан']:p.quantity<=p.min_quantity?['badge-yellow','Малко']:['badge-green','Наличен'];
+          const SL={available:'✅ Наличен',ordered:'🔵 Поръчан',received:'📦 Получен',reserved:'🟡 Резервиран',sent:'🚚 Изпратен',rented:'🤝 Под наем',depleted:'🔴 Изчерпан'};
+          const SC={available:'status-available',ordered:'status-ordered',received:'status-received',reserved:'status-reserved',sent:'status-sent',rented:'status-rented',depleted:'status-depleted'};
+          const status=p.status||'available';
+          const orderedInfo=status==='ordered'&&p.expected_date?`<br><span style="font-size:10px;color:#2559a8">Очаква се: ${p.expected_date}</span>`:'';
           return`<tr>
             <td>
               <div style="display:flex;align-items:center;gap:10px">
@@ -587,7 +651,7 @@ function renderProducts(el){
             <td><span style="font-weight:700;color:${p.quantity<=p.min_quantity?'#e05555':'var(--text)'}">${p.quantity} ${p.unit}</span></td>
             <td>${p.price>0?p.price.toFixed(2)+' лв':'—'}</td>
             <td style="font-size:12px;color:var(--muted)">${p.suppliers?.name||'—'}</td>
-            <td><span class="badge ${st[0]}">${st[1]}</span>${p.expiry_date&&new Date(p.expiry_date)<new Date()?'<br><span class="badge badge-red" style="margin-top:2px">Изтекъл</span>':''}</td>
+            <td><span class="badge ${SC[status]||'status-available'}">${SL[status]||status}</span>${orderedInfo}${p.expiry_date&&new Date(p.expiry_date)<new Date()?'<br><span class="badge badge-red" style="margin-top:2px">Изтекъл</span>':''}</td>
             <td><div class="actions">
               <button class="icon-btn" title="Движение" onclick="openMovementModalFor('${p.id}')">⬆</button>
               <button class="icon-btn" title="Редактирай" onclick="editProduct('${p.id}')">✏️</button>
@@ -753,6 +817,10 @@ function openProductModal(){
   document.getElementById('p-min-qty').value='5';
   document.getElementById('p-price').value='0';
   document.getElementById('p-expiry').value='';
+  document.getElementById('p-status').value='available';
+  document.getElementById('p-ordered-date').value='';
+  document.getElementById('p-expected-date').value='';
+  document.getElementById('status-dates').style.display='none';
   populateCategorySelect('p-category',null);
   populateSupplierSelect('p-supplier',null);
   populateLocationSelect('p-location',null);
@@ -771,6 +839,10 @@ function editProduct(id){
   document.getElementById('p-description').value=p.description||'';
   document.getElementById('p-serial').value=p.serial_number||'';
   document.getElementById('p-expiry').value=p.expiry_date||'';
+  document.getElementById('p-status').value=p.status||'available';
+  document.getElementById('p-ordered-date').value=p.ordered_date||'';
+  document.getElementById('p-expected-date').value=p.expected_date||'';
+  toggleStatusDates(p.status||'available');
   populateCategorySelect('p-category',p.category_id);
   populateSupplierSelect('p-supplier',p.supplier_id);
   populateLocationSelect('p-location',p.location);
@@ -779,6 +851,7 @@ function editProduct(id){
 async function saveProduct(){
   const name=document.getElementById('p-name').value.trim();
   if(!name){showToast('Въведи наименование!','error');return;}
+  const status=document.getElementById('p-status').value;
   const data={
     name,sku:document.getElementById('p-sku').value.trim()||null,
     barcode:document.getElementById('p-barcode').value.trim()||null,
@@ -792,12 +865,20 @@ async function saveProduct(){
     serial_number:document.getElementById('p-serial').value.trim()||null,
     expiry_date:document.getElementById('p-expiry').value||null,
     description:document.getElementById('p-description').value.trim()||null,
+    status,
+    ordered_date:document.getElementById('p-ordered-date').value||null,
+    expected_date:document.getElementById('p-expected-date').value||null,
     updated_at:new Date().toISOString()
   };
   if(editingProductId){await db.from('products').update(data).eq('id',editingProductId);showToast('Продуктът е обновен','success');}
   else{await db.from('products').insert(data);showToast('Продуктът е добавен','success');}
   closeModal('product-modal');stopBarcodeScanner();
   await loadProducts();showPage(currentPage);
+}
+
+function toggleStatusDates(val){
+  const el=document.getElementById('status-dates');
+  if(el) el.style.display=(val==='ordered'||val==='received')?'block':'none';
 }
 
 // MOVEMENT
@@ -1036,6 +1117,17 @@ function stopBarcodeScanner(){
 }
 
 // EXPORT CSV
+async function markReceived(productId){
+  await db.from('products').update({
+    status:'received',
+    received_date:new Date().toISOString().slice(0,10),
+    updated_at:new Date().toISOString()
+  }).eq('id',productId);
+  showToast('Маркирано като получено!','success');
+  await loadProducts();
+  showPage(currentPage);
+}
+
 function exportCSV(){
   const rows=[['Наименование','SKU','Баркод','Категория','Количество','Мерна ед.','Цена','Локация','Доставчик']];
   products.forEach(p=>rows.push([p.name,p.sku||'',p.barcode||'',p.categories?.name||'',p.quantity,p.unit,p.price,p.location||'',p.suppliers?.name||'']));
