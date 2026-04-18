@@ -749,6 +749,7 @@ tr:hover td{background:var(--accent-light)}
     </div>
     <div class="form-actions">
       <button class="btn btn-secondary" onclick="closeModal('event-modal')">Отказ</button>
+      <button id="ev-delete-btn" class="btn btn-danger" style="display:none" onclick="deleteEventFromModal()">🗑 Изтрий</button>
       <button class="btn btn-primary" onclick="saveEvent()">Запази</button>
     </div>
   </div>
@@ -1623,6 +1624,7 @@ function renderCalendar(el){
 function openEventModal(){
   editingEventId=null;
   document.getElementById('event-modal-title').textContent='Ново събитие';
+  document.getElementById('ev-delete-btn').style.display='none';
   document.getElementById('ev-title').value='';
   document.getElementById('ev-type').value='Рожден ден';
   document.getElementById('ev-date').value='';
@@ -1649,6 +1651,7 @@ function editEvent(id){
   const e=events.find(x=>x.id===id);if(!e)return;
   editingEventId=id;
   document.getElementById('event-modal-title').textContent='Редактирай събитие';
+  document.getElementById('ev-delete-btn').style.display='inline-flex';
   document.getElementById('ev-title').value=e.title;
   document.getElementById('ev-type').value=e.type||'Рожден ден';
   document.getElementById('ev-date').value=e.date;
@@ -1697,6 +1700,16 @@ async function saveEvent(){
   // Navigate calendar to the event date
   calendarDate=new Date(date);
   showPage('calendar');
+}
+
+async function deleteEventFromModal(){
+  if(!editingEventId)return;
+  if(!confirm('Изтриване на събитието?'))return;
+  await db.from('events').delete().eq('id',editingEventId);
+  showToast('Събитието е изтрито','success');
+  closeModal('event-modal');
+  await loadEvents();
+  showPage(currentPage);
 }
 
 async function deleteEvent(id){
