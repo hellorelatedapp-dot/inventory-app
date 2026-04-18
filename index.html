@@ -213,6 +213,9 @@ tr:hover td{background:var(--accent-light)}
     <div class="nav-item" onclick="showPage('quotes')" id="nav-quotes">
       <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>Оферти
     </div>
+    <div class="nav-item" onclick="showPage('calendar')" id="nav-calendar">
+      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>Календар
+    </div>
     <div class="nav-item" onclick="showPage('rentals')" id="nav-rentals">
       <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>Наеми
     </div>
@@ -659,6 +662,98 @@ tr:hover td{background:var(--accent-light)}
   </div>
 </div>
 
+<!-- EVENT MODAL -->
+<div class="overlay" id="event-modal">
+  <div class="modal" style="width:500px">
+    <div class="modal-hdr">
+      <h3 id="event-modal-title">Ново събитие</h3>
+      <button class="close-btn" onclick="closeModal('event-modal')">×</button>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Заглавие *</label>
+        <input type="text" id="ev-title" placeholder="Напр. Рожден ден на Мария">
+      </div>
+      <div class="form-group">
+        <label>Тип</label>
+        <select id="ev-type">
+          <option>Рожден ден</option><option>Кръщене</option>
+          <option>Сватба</option><option>Корпоративно</option>
+          <option>Абитуриентски</option><option>Лично</option>
+          <option>Блокиран ден</option><option>Друго</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Дата *</label>
+        <input type="date" id="ev-date">
+      </div>
+      <div class="form-group">
+        <label>Клиент</label>
+        <select id="ev-client"></select>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Начало</label>
+        <input type="time" id="ev-start">
+      </div>
+      <div class="form-group">
+        <label>Край</label>
+        <input type="time" id="ev-end">
+      </div>
+    </div>
+    <div class="form-group">
+      <label>Адрес</label>
+      <input type="text" id="ev-address" placeholder="Зала, град...">
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Подготовка (мин)</label>
+        <input type="number" id="ev-prep" value="60" min="0">
+      </div>
+      <div class="form-group">
+        <label>Монтаж (мин)</label>
+        <input type="number" id="ev-assembly" value="90" min="0">
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Демонтаж (мин)</label>
+        <input type="number" id="ev-disassembly" value="60" min="0">
+      </div>
+      <div class="form-group">
+        <label>Транспорт (мин)</label>
+        <input type="number" id="ev-travel" value="30" min="0">
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Статус</label>
+        <select id="ev-status">
+          <option value="confirmed">✅ Потвърдено</option>
+          <option value="tentative">⏳ Предварително</option>
+          <option value="completed">🏁 Приключено</option>
+          <option value="cancelled">❌ Отказано</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Цвят</label>
+        <input type="color" id="ev-color" value="#e8718a" style="height:38px;width:100%;padding:3px">
+      </div>
+    </div>
+    <div class="form-group">
+      <label>Бележки</label>
+      <textarea id="ev-notes" rows="2"></textarea>
+    </div>
+    <div class="form-actions">
+      <button class="btn btn-secondary" onclick="closeModal('event-modal')">Отказ</button>
+      <button class="btn btn-primary" onclick="saveEvent()">Запази</button>
+    </div>
+  </div>
+</div>
+
 <!-- CATEGORY MODAL -->
 <div class="overlay" id="category-modal">
   <div class="modal" style="width:340px">
@@ -689,7 +784,7 @@ const SUPABASE_KEY='sb_publishable_4VSnFfBqyw2uS3zZOO9H3g_gsQCZlVE';
 const {createClient}=supabase;
 const db=createClient(SUPABASE_URL,SUPABASE_KEY);
 
-let products=[],categories=[],movements=[],suppliers=[],locations=[],rentals=[],clients=[],quotes=[];
+let products=[],categories=[],movements=[],suppliers=[],locations=[],rentals=[],clients=[],quotes=[],events=[];
 let quoteItemRows=[];
 let editingProductId=null,editingClientId=null,editingQuoteId=null;
 let selectedMovType='in',currentPage='dashboard',searchQuery='';
@@ -705,7 +800,7 @@ function setTheme(t){
 (function(){const t=localStorage.getItem('theme')||'rose';setTheme(t);})();
 
 async function init(){
-  await Promise.all([loadCategories(),loadProducts(),loadMovements(),loadSuppliers(),loadLocations(),loadRentals(),loadClients(),loadQuotes()]);
+  await Promise.all([loadCategories(),loadProducts(),loadMovements(),loadSuppliers(),loadLocations(),loadRentals(),loadClients(),loadQuotes(),loadEvents()]);
   showPage('dashboard');
 }
 
@@ -717,6 +812,7 @@ async function loadLocations(){const{data}=await db.from('locations').select('*'
 async function loadRentals(){const{data}=await db.from('rentals').select('*,rental_items(id,quantity,returned_quantity,condition,products(name,unit))').order('created_at',{ascending:false});rentals=data||[];}
 async function loadClients(){const{data}=await db.from('clients').select('*').order('name');clients=data||[];}
 async function loadQuotes(){const{data}=await db.from('quotes').select('*,clients(name,phone),quote_items(*)').order('created_at',{ascending:false});quotes=data||[];}
+async function loadEvents(){const{data}=await db.from('events').select('*,clients(name,phone)').order('date');events=data||[];}
 
 function showPage(page){
   currentPage=page;
@@ -732,6 +828,7 @@ function showPage(page){
   else if(page==='reports')renderReports(el);
   else if(page==='clients')renderClients(el);
   else if(page==='quotes')renderQuotes(el);
+  else if(page==='calendar')renderCalendar(el);
 }
 
 function renderDashboard(el){
@@ -1414,7 +1511,202 @@ async function uploadProductImage(productId){
 }
 
 // EXPORT CSV
-// ═══ CLIENTS ═══════════════════════════════════════════════
+// ═══ CALENDAR ══════════════════════════════════════════════
+let calendarView='month';
+let calendarDate=new Date();
+let editingEventId=null;
+
+const EVENT_COLORS={
+  'Рожден ден':'#e8718a','Кръщене':'#7c9ed9','Сватба':'#c4a0d4',
+  'Корпоративно':'#5a8a6a','Абитуриентски':'#e8a855','Лично':'#888',
+  'Блокиран ден':'#555','Друго':'#888'
+};
+const STATUS_STYLES={
+  confirmed:{border:'none',opacity:1},
+  tentative:{border:'2px dashed',opacity:.85},
+  completed:{opacity:.6},
+  cancelled:{opacity:.4,textDecoration:'line-through'}
+};
+
+function renderCalendar(el){
+  const today=new Date();
+  const y=calendarDate.getFullYear();
+  const m=calendarDate.getMonth();
+  const monthNames=['Януари','Февруари','Март','Април','Май','Юни','Юли','Август','Септември','Октомври','Ноември','Декември'];
+  const dayNames=['Пон','Вт','Ср','Чет','Пет','Съб','Нед'];
+
+  // First day of month (Monday=0)
+  const firstDay=new Date(y,m,1);
+  let startDow=firstDay.getDay()-1; if(startDow<0)startDow=6;
+  const daysInMonth=new Date(y,m+1,0).getDate();
+  const daysInPrevMonth=new Date(y,m,0).getDate();
+
+  // Build calendar grid
+  let cells=[];
+  for(let i=0;i<startDow;i++) cells.push({day:daysInPrevMonth-startDow+1+i,cur:false,date:null});
+  for(let i=1;i<=daysInMonth;i++){
+    const date=`${y}-${String(m+1).padStart(2,'0')}-${String(i).padStart(2,'0')}`;
+    cells.push({day:i,cur:true,date});
+  }
+  while(cells.length%7!==0) cells.push({day:cells.length-startDow-daysInMonth+1,cur:false,date:null});
+
+  // Upcoming events list
+  const todayStr=today.toISOString().slice(0,10);
+  const upcoming=events.filter(e=>e.date>=todayStr&&e.status!=='cancelled').slice(0,5);
+
+  el.innerHTML=`
+  <div class="topbar">
+    <h2>Календар</h2>
+    <div style="display:flex;align-items:center;gap:8px">
+      <button class="btn btn-secondary btn-sm" onclick="calendarDate=new Date(calendarDate.getFullYear(),calendarDate.getMonth()-1,1);renderCalendar(document.getElementById('page-content'))">‹</button>
+      <span style="font-weight:700;font-size:14px;min-width:140px;text-align:center">${monthNames[m]} ${y}</span>
+      <button class="btn btn-secondary btn-sm" onclick="calendarDate=new Date(calendarDate.getFullYear(),calendarDate.getMonth()+1,1);renderCalendar(document.getElementById('page-content'))">›</button>
+      <button class="btn btn-secondary btn-sm" onclick="calendarDate=new Date();renderCalendar(document.getElementById('page-content'))">Днес</button>
+    </div>
+    <button class="btn btn-primary" onclick="openEventModal()">+ Събитие</button>
+  </div>
+  <div class="content" style="display:grid;grid-template-columns:1fr 260px;gap:16px;align-items:start">
+    <div>
+      <div class="table-wrap" style="overflow:visible">
+        <div style="display:grid;grid-template-columns:repeat(7,1fr);border-bottom:1px solid var(--border)">
+          ${dayNames.map(d=>`<div style="padding:8px;text-align:center;font-size:11px;font-weight:700;color:var(--muted)">${d}</div>`).join('')}
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(7,1fr)">
+          ${cells.map((cell,i)=>{
+            const isToday=cell.date===todayStr;
+            const dayEvents=cell.date?events.filter(e=>e.date===cell.date):[];
+            const borderRight=i%7!==6?'border-right:1px solid var(--border);':'';
+            const borderBottom=i<cells.length-7?'border-bottom:1px solid var(--border);':'';
+            return`<div style="min-height:90px;padding:4px;${borderRight}${borderBottom}${!cell.cur?'background:var(--bg);':''}" onclick="${cell.date?`openEventModalOnDate('${cell.date}')`:''}" style="cursor:${cell.date?'pointer':'default'}">
+              <div style="text-align:right;margin-bottom:3px">
+                <span style="${isToday?`background:var(--accent);color:#fff;border-radius:50%;width:22px;height:22px;display:inline-flex;align-items:center;justify-content:center;font-size:12px;font-weight:700`:`font-size:12px;color:${cell.cur?'var(--text)':'var(--muted)'};font-weight:${cell.cur?'600':'400'}`}">${cell.day}</span>
+              </div>
+              ${dayEvents.slice(0,3).map(e=>{
+                const color=e.color||EVENT_COLORS[e.type]||'#888';
+                return`<div onclick="event.stopPropagation();editEvent('${e.id}')" style="background:${color}22;border-left:3px solid ${color};border-radius:4px;padding:2px 5px;font-size:10px;font-weight:600;color:${color};margin-bottom:2px;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${e.title}">${e.start_time?e.start_time.slice(0,5)+' ':''} ${e.title}</div>`;
+              }).join('')}
+              ${dayEvents.length>3?`<div style="font-size:10px;color:var(--muted);padding:1px 4px">+${dayEvents.length-3} още</div>`:''}
+            </div>`;
+          }).join('')}
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <div class="table-wrap" style="padding:14px">
+        <div style="font-size:13px;font-weight:700;margin-bottom:12px">📅 Предстоящи</div>
+        ${upcoming.length===0?`<p style="font-size:13px;color:var(--muted)">Няма предстоящи събития</p>`:
+          upcoming.map(e=>{
+            const color=e.color||EVENT_COLORS[e.type]||'#888';
+            const daysLeft=Math.ceil((new Date(e.date)-today)/(1000*60*60*24));
+            return`<div style="border-left:3px solid ${color};padding:8px 10px;margin-bottom:8px;border-radius:0 8px 8px 0;background:${color}12;cursor:pointer" onclick="editEvent('${e.id}')">
+              <div style="font-size:12px;font-weight:700;color:var(--text)">${e.title}</div>
+              <div style="font-size:11px;color:var(--muted);margin-top:2px">${e.date}${e.start_time?' · '+e.start_time.slice(0,5):''}</div>
+              ${e.clients?.name?`<div style="font-size:11px;color:var(--muted)">${e.clients.name}</div>`:''}
+              <div style="font-size:10px;font-weight:700;color:${color};margin-top:3px">${daysLeft===0?'Днес!':daysLeft===1?'Утре!':daysLeft+' дни'}</div>
+            </div>`;
+          }).join('')}
+      </div>
+
+      <div class="table-wrap" style="padding:14px;margin-top:12px">
+        <div style="font-size:13px;font-weight:700;margin-bottom:10px">Легенда</div>
+        ${Object.entries(EVENT_COLORS).map(([type,color])=>`
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+            <div style="width:12px;height:12px;border-radius:3px;background:${color};flex-shrink:0"></div>
+            <span style="font-size:12px;color:var(--text)">${type}</span>
+          </div>`).join('')}
+      </div>
+    </div>
+  </div>`;
+}
+
+function openEventModal(){
+  editingEventId=null;
+  document.getElementById('event-modal-title').textContent='Ново събитие';
+  document.getElementById('ev-title').value='';
+  document.getElementById('ev-type').value='Рожден ден';
+  document.getElementById('ev-date').value='';
+  document.getElementById('ev-start').value='';
+  document.getElementById('ev-end').value='';
+  document.getElementById('ev-address').value='';
+  document.getElementById('ev-prep').value='60';
+  document.getElementById('ev-assembly').value='90';
+  document.getElementById('ev-disassembly').value='60';
+  document.getElementById('ev-travel').value='30';
+  document.getElementById('ev-status').value='confirmed';
+  document.getElementById('ev-color').value='#e8718a';
+  document.getElementById('ev-notes').value='';
+  populateClientSelect('ev-client',null);
+  openModal('event-modal');
+}
+
+function openEventModalOnDate(date){
+  openEventModal();
+  document.getElementById('ev-date').value=date;
+}
+
+function editEvent(id){
+  const e=events.find(x=>x.id===id);if(!e)return;
+  editingEventId=id;
+  document.getElementById('event-modal-title').textContent='Редактирай събитие';
+  document.getElementById('ev-title').value=e.title;
+  document.getElementById('ev-type').value=e.type||'Рожден ден';
+  document.getElementById('ev-date').value=e.date;
+  document.getElementById('ev-start').value=e.start_time||'';
+  document.getElementById('ev-end').value=e.end_time||'';
+  document.getElementById('ev-address').value=e.address||'';
+  document.getElementById('ev-prep').value=e.prep_time||60;
+  document.getElementById('ev-assembly').value=e.assembly_time||90;
+  document.getElementById('ev-disassembly').value=e.disassembly_time||60;
+  document.getElementById('ev-travel').value=e.travel_time||30;
+  document.getElementById('ev-status').value=e.status||'confirmed';
+  document.getElementById('ev-color').value=e.color||'#e8718a';
+  document.getElementById('ev-notes').value=e.notes||'';
+  populateClientSelect('ev-client',e.client_id);
+  openModal('event-modal');
+}
+
+async function saveEvent(){
+  const title=document.getElementById('ev-title').value.trim();
+  const date=document.getElementById('ev-date').value;
+  if(!title||!date){showToast('Въведи заглавие и дата!','error');return;}
+  const type=document.getElementById('ev-type').value;
+  const data={
+    title,type,date,
+    client_id:document.getElementById('ev-client').value||null,
+    start_time:document.getElementById('ev-start').value||null,
+    end_time:document.getElementById('ev-end').value||null,
+    address:document.getElementById('ev-address').value.trim()||null,
+    prep_time:parseInt(document.getElementById('ev-prep').value)||60,
+    assembly_time:parseInt(document.getElementById('ev-assembly').value)||90,
+    disassembly_time:parseInt(document.getElementById('ev-disassembly').value)||60,
+    travel_time:parseInt(document.getElementById('ev-travel').value)||30,
+    status:document.getElementById('ev-status').value,
+    color:document.getElementById('ev-color').value||EVENT_COLORS[type]||'#e8718a',
+    notes:document.getElementById('ev-notes').value.trim()||null
+  };
+  if(editingEventId){
+    await db.from('events').update(data).eq('id',editingEventId);
+    showToast('Събитието е обновено','success');
+  } else {
+    await db.from('events').insert(data);
+    showToast('Събитието е добавено','success');
+  }
+  closeModal('event-modal');
+  await loadEvents();
+  // Navigate calendar to the event date
+  calendarDate=new Date(date);
+  showPage('calendar');
+}
+
+async function deleteEvent(id){
+  if(!confirm('Изтриване на събитието?'))return;
+  await db.from('events').delete().eq('id',id);
+  showToast('Събитието е изтрито','success');
+  await loadEvents();showPage(currentPage);
+}
+
+// ═══ CLIENTS ══════════════════════════════════════════════
 function renderClients(el){
   const CONTACT={phone:'📞 Телефон',whatsapp:'💬 WhatsApp',viber:'📱 Viber',email:'📧 Имейл'};
   el.innerHTML=`
