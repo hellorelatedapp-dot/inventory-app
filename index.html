@@ -228,6 +228,9 @@ tr:hover td{background:var(--accent-light)}
     <div class="nav-item" onclick="showPage('reports')" id="nav-reports">
       <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>Отчети
     </div>
+    <div class="nav-item" onclick="showPage('finances')" id="nav-finances">
+      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>Финанси
+    </div>
   </nav>
   <div class="sidebar-bottom">
     <div style="font-size:11px;color:var(--muted);margin-bottom:6px">Тема</div>
@@ -755,6 +758,57 @@ tr:hover td{background:var(--accent-light)}
   </div>
 </div>
 
+<!-- EXPENSE MODAL -->
+<div class="overlay" id="expense-modal">
+  <div class="modal" style="width:440px">
+    <div class="modal-hdr">
+      <h3 id="expense-modal-title">Нов разход</h3>
+      <button class="close-btn" onclick="closeModal('expense-modal')">×</button>
+    </div>
+    <div class="form-group">
+      <label>Описание *</label>
+      <input type="text" id="ex-desc" placeholder="Напр. Балони от Тему">
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Сума (лв) *</label>
+        <input type="number" id="ex-amount" value="0" min="0" step="0.01">
+      </div>
+      <div class="form-group">
+        <label>Дата</label>
+        <input type="date" id="ex-date">
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Категория</label>
+        <select id="ex-category">
+          <option>Материали</option>
+          <option>Транспорт</option>
+          <option>Наем склад</option>
+          <option>Реклама</option>
+          <option>Оборудване</option>
+          <option>Друго</option>
+          <option>Общо</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Доставчик</label>
+        <select id="ex-supplier"></select>
+      </div>
+    </div>
+    <div class="form-group">
+      <label>Бележка / Фактура №</label>
+      <input type="text" id="ex-note" placeholder="По желание">
+    </div>
+    <div class="form-actions">
+      <button class="btn btn-secondary" onclick="closeModal('expense-modal')">Отказ</button>
+      <button id="ex-delete-btn" class="btn btn-danger" style="display:none" onclick="deleteExpenseFromModal()">🗑 Изтрий</button>
+      <button class="btn btn-primary" onclick="saveExpense()">Запази</button>
+    </div>
+  </div>
+</div>
+
 <!-- CATEGORY MODAL -->
 <div class="overlay" id="category-modal">
   <div class="modal" style="width:340px">
@@ -785,7 +839,7 @@ const SUPABASE_KEY='sb_publishable_4VSnFfBqyw2uS3zZOO9H3g_gsQCZlVE';
 const {createClient}=supabase;
 const db=createClient(SUPABASE_URL,SUPABASE_KEY);
 
-let products=[],categories=[],movements=[],suppliers=[],locations=[],rentals=[],clients=[],quotes=[],events=[];
+let products=[],categories=[],movements=[],suppliers=[],locations=[],rentals=[],clients=[],quotes=[],events=[],expenses=[];
 let quoteItemRows=[];
 let editingProductId=null,editingClientId=null,editingQuoteId=null;
 let selectedMovType='in',currentPage='dashboard',searchQuery='';
@@ -801,7 +855,7 @@ function setTheme(t){
 (function(){const t=localStorage.getItem('theme')||'rose';setTheme(t);})();
 
 async function init(){
-  await Promise.all([loadCategories(),loadProducts(),loadMovements(),loadSuppliers(),loadLocations(),loadRentals(),loadClients(),loadQuotes(),loadEvents()]);
+  await Promise.all([loadCategories(),loadProducts(),loadMovements(),loadSuppliers(),loadLocations(),loadRentals(),loadClients(),loadQuotes(),loadEvents(),loadExpenses()]);
   showPage('dashboard');
 }
 
@@ -814,6 +868,7 @@ async function loadRentals(){const{data}=await db.from('rentals').select('*,rent
 async function loadClients(){const{data}=await db.from('clients').select('*').order('name');clients=data||[];}
 async function loadQuotes(){const{data}=await db.from('quotes').select('*,clients(name,phone),quote_items(*)').order('created_at',{ascending:false});quotes=data||[];}
 async function loadEvents(){const{data}=await db.from('events').select('*,clients(name,phone)').order('date');events=data||[];}
+async function loadExpenses(){const{data}=await db.from('expenses').select('*,suppliers(name)').order('date',{ascending:false});expenses=data||[];}
 
 function showPage(page){
   currentPage=page;
@@ -830,6 +885,7 @@ function showPage(page){
   else if(page==='clients')renderClients(el);
   else if(page==='quotes')renderQuotes(el);
   else if(page==='calendar')renderCalendar(el);
+  else if(page==='finances')renderFinances(el);
 }
 
 function renderDashboard(el){
@@ -1512,6 +1568,264 @@ async function uploadProductImage(productId){
 }
 
 // EXPORT CSV
+// ═══ FINANCES ══════════════════════════════════════════════
+let editingExpenseId=null;
+let finTab='overview';
+
+function renderFinances(el){
+  const today=new Date();
+  const thisMonth=today.toISOString().slice(0,7);
+  const lastMonth=new Date(today.getFullYear(),today.getMonth()-1,1).toISOString().slice(0,7);
+
+  // ПРИХОДИ от оферти
+  const paidQuotes=quotes.filter(q=>q.status==='deposit_paid'||q.status==='accepted');
+  const totalRevenue=paidQuotes.reduce((s,q)=>s+(q.total_price||0),0);
+  const monthRevenue=paidQuotes.filter(q=>q.event_date?.startsWith(thisMonth)).reduce((s,q)=>s+(q.total_price||0),0);
+  const lastMonthRevenue=paidQuotes.filter(q=>q.event_date?.startsWith(lastMonth)).reduce((s,q)=>s+(q.total_price||0),0);
+
+  // РАЗХОДИ
+  const totalExpenses=expenses.reduce((s,e)=>s+(e.amount||0),0);
+  const monthExpenses=expenses.filter(e=>e.date?.startsWith(thisMonth)).reduce((s,e)=>s+(e.amount||0),0);
+
+  // ОЧАКВАНИ приходи (потвърдени оферти)
+  const confirmedQuotes=quotes.filter(q=>q.status==='accepted'&&!q.deposit_paid);
+  const expectedRevenue=confirmedQuotes.reduce((s,q)=>s+(q.total_price||0),0);
+
+  // ДЕПОЗИТИ чакащи
+  const pendingDeposits=quotes.filter(q=>q.status==='draft'||q.status==='sent'||q.status==='seen');
+  const pendingAmount=pendingDeposits.reduce((s,q)=>s+(q.deposit_amount||0),0);
+
+  const profit=totalRevenue-totalExpenses;
+  const monthProfit=monthRevenue-monthExpenses;
+  const growth=lastMonthRevenue>0?((monthRevenue-lastMonthRevenue)/lastMonthRevenue*100):0;
+
+  // P&L по оферти
+  const quotesPL=paidQuotes.map(q=>{
+    const revenue=q.total_price||0;
+    const cost=q.cost_price||0;
+    const margin=revenue>0?((revenue-cost)/revenue*100):0;
+    return{...q,revenue,cost,profit:revenue-cost,margin};
+  }).sort((a,b)=>b.profit-a.profit);
+
+  // Разходи по категории
+  const expByCategory={};
+  expenses.forEach(e=>{
+    if(!expByCategory[e.category])expByCategory[e.category]=0;
+    expByCategory[e.category]+=e.amount||0;
+  });
+
+  // Cash flow - очаквани приходи следващите 90 дни
+  const next90=new Date(); next90.setDate(next90.getDate()+90);
+  const cashFlow=quotes.filter(q=>
+    (q.status==='accepted'||q.status==='deposit_paid')&&
+    q.event_date&&new Date(q.event_date)<=next90&&new Date(q.event_date)>=today
+  ).sort((a,b)=>new Date(a.event_date)-new Date(b.event_date));
+
+  el.innerHTML=`
+  <div class="topbar">
+    <h2>Финанси</h2>
+    <button class="btn btn-primary" onclick="openExpenseModal()">+ Разход</button>
+  </div>
+  <div class="content">
+
+    <!-- 5 ключови числа -->
+    <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:20px">
+      <div class="stat-card good">
+        <div class="label">Приходи общо</div>
+        <div class="value">${totalRevenue.toFixed(0)} лв</div>
+        <div class="sub">от платени оферти</div>
+      </div>
+      <div class="stat-card ${monthProfit>=0?'good':'danger'}">
+        <div class="label">Печалба този месец</div>
+        <div class="value">${monthProfit.toFixed(0)} лв</div>
+        <div class="sub">${growth>0?'▲':'▼'} ${Math.abs(growth).toFixed(0)}% спр. миналия</div>
+      </div>
+      <div class="stat-card">
+        <div class="label">Разходи общо</div>
+        <div class="value" style="color:var(--danger)">${totalExpenses.toFixed(0)} лв</div>
+        <div class="sub">${monthExpenses.toFixed(0)} лв този месец</div>
+      </div>
+      <div class="stat-card warn">
+        <div class="label">Очаквани приходи</div>
+        <div class="value">${expectedRevenue.toFixed(0)} лв</div>
+        <div class="sub">от потвърдени оферти</div>
+      </div>
+      <div class="stat-card">
+        <div class="label">Чакащи депозити</div>
+        <div class="value">${pendingAmount.toFixed(0)} лв</div>
+        <div class="sub">${pendingDeposits.length} оферти</div>
+      </div>
+    </div>
+
+    <!-- Табове -->
+    <div class="section-tabs" style="margin-bottom:16px">
+      <div class="section-tab ${finTab==='overview'?'active':''}" onclick="finTab='overview';renderFinances(document.getElementById('page-content'))">📊 Преглед</div>
+      <div class="section-tab ${finTab==='pl'?'active':''}" onclick="finTab='pl';renderFinances(document.getElementById('page-content'))">💰 P&L по оферти</div>
+      <div class="section-tab ${finTab==='expenses'?'active':''}" onclick="finTab='expenses';renderFinances(document.getElementById('page-content'))">🧾 Разходи</div>
+      <div class="section-tab ${finTab==='cashflow'?'active':''}" onclick="finTab='cashflow';renderFinances(document.getElementById('page-content'))">📈 Cash Flow</div>
+    </div>
+
+    ${finTab==='overview'?`
+    <div class="dash-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+      <div class="table-wrap">
+        <div class="table-header"><h3>Разходи по категории</h3></div>
+        <table><tbody>
+        ${Object.entries(expByCategory).sort((a,b)=>b[1]-a[1]).map(([cat,amt])=>`<tr>
+          <td>${cat}</td>
+          <td style="text-align:right;font-weight:700;color:#e05555">${amt.toFixed(2)} лв</td>
+          <td style="text-align:right;font-size:11px;color:var(--muted)">${totalExpenses>0?(amt/totalExpenses*100).toFixed(0)+'%':''}</td>
+        </tr>`).join('')||'<tr><td colspan="3"><div class="empty"><p>Няма разходи</p></div></td></tr>'}
+        </tbody></table>
+      </div>
+      <div class="table-wrap">
+        <div class="table-header"><h3>Топ оферти по приход</h3></div>
+        <table><tbody>
+        ${quotesPL.slice(0,8).map((q,i)=>`<tr>
+          <td style="color:var(--muted);width:24px">${i+1}</td>
+          <td><strong>${q.clients?.name||'—'}</strong><br><span style="font-size:11px;color:var(--muted)">${q.event_date||''} · ${q.event_type||''}</span></td>
+          <td style="text-align:right;font-weight:700;color:var(--accent)">${q.revenue.toFixed(0)} лв</td>
+          <td style="text-align:right"><span class="badge ${q.margin>30?'badge-green':q.margin>15?'badge-yellow':'badge-red'}">${q.margin.toFixed(0)}%</span></td>
+        </tr>`).join('')||'<tr><td colspan="4"><div class="empty"><p>Няма данни</p></div></td></tr>'}
+        </tbody></table>
+      </div>
+    </div>`:''}
+
+    ${finTab==='pl'?`
+    <div class="table-wrap">
+      <div class="table-header"><h3>P&L по оферти</h3><span style="font-size:12px;color:var(--muted)">Себестойност vs Приход</span></div>
+      <table><thead><tr>
+        <th>Клиент</th><th>Събитие</th><th>Приход</th><th>Себестойност</th><th>Печалба</th><th>Марж</th>
+      </tr></thead><tbody>
+      ${quotesPL.length===0?`<tr><td colspan="6"><div class="empty"><p>Няма платени оферти</p></div></td></tr>`:
+        quotesPL.map(q=>`<tr>
+          <td><strong>${q.clients?.name||'—'}</strong></td>
+          <td style="font-size:12px;color:var(--muted)">${q.event_date||'—'} · ${q.event_type||''}</td>
+          <td style="font-weight:700;color:var(--accent)">${q.revenue.toFixed(2)} лв</td>
+          <td style="color:#e05555">${q.cost.toFixed(2)} лв</td>
+          <td style="font-weight:700;color:${q.profit>=0?'#3d6b50':'#e05555'}">${q.profit.toFixed(2)} лв</td>
+          <td><span class="badge ${q.margin>30?'badge-green':q.margin>15?'badge-yellow':'badge-red'}">${q.margin.toFixed(0)}%</span></td>
+        </tr>`).join('')}
+      </tbody></table>
+    </div>`:''}
+
+    ${finTab==='expenses'?`
+    <div class="table-wrap">
+      <div class="table-header"><h3>Разходи</h3>
+        <button class="btn btn-primary btn-sm" onclick="openExpenseModal()">+ Нов разход</button>
+      </div>
+      <table><thead><tr>
+        <th>Описание</th><th>Категория</th><th>Доставчик</th><th>Дата</th><th>Сума</th><th>Действия</th>
+      </tr></thead><tbody>
+      ${expenses.length===0?`<tr><td colspan="6"><div class="empty"><p>Няма разходи</p></div></td></tr>`:
+        expenses.map(e=>`<tr>
+          <td><strong>${e.description}</strong>${e.receipt_note?`<br><span style="font-size:11px;color:var(--muted)">${e.receipt_note}</span>`:''}</td>
+          <td><span class="badge badge-gray">${e.category}</span></td>
+          <td style="font-size:12px;color:var(--muted)">${e.suppliers?.name||'—'}</td>
+          <td style="font-size:12px;color:var(--muted)">${e.date||'—'}</td>
+          <td style="font-weight:700;color:#e05555">${(e.amount||0).toFixed(2)} лв</td>
+          <td><div class="actions">
+            <button class="icon-btn" onclick="editExpense('${e.id}')">✏️</button>
+            <button class="icon-btn danger" onclick="deleteExpense('${e.id}')">🗑</button>
+          </div></td>
+        </tr>`).join('')}
+      </tbody></table>
+    </div>`:''}
+
+    ${finTab==='cashflow'?`
+    <div class="table-wrap">
+      <div class="table-header"><h3>📈 Cash Flow — следващи 90 дни</h3></div>
+      ${cashFlow.length===0?`<div class="empty"><p>Няма потвърдени оферти за следващите 90 дни</p></div>`:`
+      <table><thead><tr>
+        <th>Клиент</th><th>Събитие</th><th>Дата</th><th>Очакван приход</th><th>Депозит</th><th>Статус</th>
+      </tr></thead><tbody>
+      ${cashFlow.map(q=>{
+        const daysLeft=Math.ceil((new Date(q.event_date)-today)/(1000*60*60*24));
+        return`<tr>
+          <td><strong>${q.clients?.name||'—'}</strong></td>
+          <td style="font-size:12px;color:var(--muted)">${q.event_type||'—'}</td>
+          <td>
+            <span style="font-weight:600">${q.event_date}</span>
+            <br><span style="font-size:11px;color:${daysLeft<=7?'#e05555':'var(--muted)'}">${daysLeft===0?'Днес!':daysLeft===1?'Утре!':daysLeft+' дни'}</span>
+          </td>
+          <td style="font-weight:700;color:var(--accent)">${(q.total_price||0).toFixed(2)} лв</td>
+          <td>${q.deposit_paid?'<span class="badge badge-green">✅ Платен</span>':q.deposit_amount>0?`<span class="badge badge-yellow">${q.deposit_amount.toFixed(0)} лв чака</span>`:'—'}</td>
+          <td><span class="badge ${QUOTE_STATUS[q.status]?.css||'badge-gray'}">${QUOTE_STATUS[q.status]?.label||q.status}</span></td>
+        </tr>`;}).join('')}
+      </tbody></table>`}
+    </div>`:''}
+
+  </div>`;
+}
+
+function openExpenseModal(){
+  editingExpenseId=null;
+  document.getElementById('expense-modal-title').textContent='Нов разход';
+  document.getElementById('ex-desc').value='';
+  document.getElementById('ex-amount').value='0';
+  document.getElementById('ex-date').value=new Date().toISOString().slice(0,10);
+  document.getElementById('ex-category').value='Материали';
+  document.getElementById('ex-note').value='';
+  document.getElementById('ex-delete-btn').style.display='none';
+  populateSupplierSelect('ex-supplier',null);
+  openModal('expense-modal');
+}
+
+function editExpense(id){
+  const e=expenses.find(x=>x.id===id);if(!e)return;
+  editingExpenseId=id;
+  document.getElementById('expense-modal-title').textContent='Редактирай разход';
+  document.getElementById('ex-desc').value=e.description;
+  document.getElementById('ex-amount').value=e.amount;
+  document.getElementById('ex-date').value=e.date||'';
+  document.getElementById('ex-category').value=e.category||'Материали';
+  document.getElementById('ex-note').value=e.receipt_note||'';
+  document.getElementById('ex-delete-btn').style.display='inline-flex';
+  populateSupplierSelect('ex-supplier',e.supplier_id);
+  openModal('expense-modal');
+}
+
+async function saveExpense(){
+  const desc=document.getElementById('ex-desc').value.trim();
+  const amount=parseFloat(document.getElementById('ex-amount').value)||0;
+  if(!desc||amount<=0){showToast('Попълни описание и сума!','error');return;}
+  const data={
+    description:desc,
+    amount,
+    date:document.getElementById('ex-date').value||null,
+    category:document.getElementById('ex-category').value,
+    supplier_id:document.getElementById('ex-supplier').value||null,
+    receipt_note:document.getElementById('ex-note').value.trim()||null
+  };
+  if(editingExpenseId){
+    await db.from('expenses').update(data).eq('id',editingExpenseId);
+    showToast('Разходът е обновен','success');
+  } else {
+    await db.from('expenses').insert(data);
+    showToast('Разходът е добавен','success');
+  }
+  closeModal('expense-modal');
+  await loadExpenses();
+  showPage(currentPage);
+}
+
+async function deleteExpenseFromModal(){
+  if(!editingExpenseId)return;
+  if(!confirm('Изтриване на разхода?'))return;
+  await db.from('expenses').delete().eq('id',editingExpenseId);
+  showToast('Разходът е изтрит','success');
+  closeModal('expense-modal');
+  await loadExpenses();
+  showPage(currentPage);
+}
+
+async function deleteExpense(id){
+  if(!confirm('Изтриване на разхода?'))return;
+  await db.from('expenses').delete().eq('id',id);
+  showToast('Разходът е изтрит','success');
+  await loadExpenses();
+  showPage(currentPage);
+}
+
 // ═══ CALENDAR ══════════════════════════════════════════════
 let calendarView='month';
 let calendarDate=new Date();
