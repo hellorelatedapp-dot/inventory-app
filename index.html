@@ -152,6 +152,33 @@ tr:hover td{background:var(--accent-light)}
 .barcode-btn{display:flex;align-items:center;gap:6px;padding:6px 10px;border:1px dashed var(--border);border-radius:7px;background:var(--bg);cursor:pointer;font-size:12px;color:var(--muted);margin-top:4px;transition:.15s}
 .barcode-btn:hover{border-color:var(--accent);color:var(--accent)}
 #barcode-video{width:100%;border-radius:8px;margin-top:8px;display:none}
+/* Date/time inputs - красиви и удобни на мобилен */
+input[type="date"],input[type="time"]{
+  width:100%;padding:10px 12px;
+  border:1.5px solid var(--border);
+  border-radius:10px;
+  font-size:14px;
+  color:var(--text);
+  background:var(--card);
+  cursor:pointer;
+  -webkit-appearance:none;
+  appearance:none;
+  font-family:inherit;
+}
+input[type="date"]:focus,input[type="time"]:focus{
+  border-color:var(--accent);
+  outline:none;
+  box-shadow:0 0 0 3px var(--accent-bg);
+}
+/* Quick date buttons */
+.quick-dates{display:flex;gap:5px;flex-wrap:wrap;margin-top:5px}
+.quick-date-btn{
+  padding:4px 10px;font-size:11px;font-weight:600;
+  border:1px solid var(--border);border-radius:20px;
+  background:var(--bg);color:var(--text);cursor:pointer;
+  transition:.15s;white-space:nowrap;
+}
+.quick-date-btn:hover{background:var(--accent);color:#fff;border-color:var(--accent)}
 .section-tabs{display:flex;gap:4px;background:var(--bg);border-radius:8px;padding:3px;margin-bottom:16px;width:fit-content}
 .section-tab{padding:6px 14px;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;color:var(--muted);transition:.15s}
 .section-tab.active{background:var(--card);color:var(--accent);box-shadow:0 1px 3px rgba(0,0,0,.1)}
@@ -228,14 +255,14 @@ tr:hover td{background:var(--accent-light)}
 .mobile-nav-item.active{color:var(--accent)}
 .mobile-nav-item.active::before{content:'';position:absolute;top:0;left:20%;right:20%;height:2px;background:var(--accent);border-radius:0 0 2px 2px}
 .mobile-nav-item svg{width:20px;height:20px}
-.mobile-nav-badge{position:absolute;top:2px;right:calc(50% - 14px);background:#e05555;color:#fff;border-radius:50%;width:14px;height:14px;font-size:8px;display:flex;align-items:center;justify-content:center;font-weight:700}
+.mobile-nav-badge{position:absolute;top:2px;right:calc(50% - 14px);background:var(--accent);color:#fff;border-radius:50%;width:14px;height:14px;font-size:8px;display:flex;align-items:center;justify-content:center;font-weight:700}
 </style>
 </head>
 <body class="theme-rose">
 
 <div class="sidebar">
   <div class="logo">
-    <h1>🌸 Eleya Decor</h1>
+    <h1 style="display:flex;align-items:center;gap:8px"><img src="data:image/png;base64,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" style="height:32px;object-fit:contain" alt="Eleya Decor"></h1>
     <p>Управление на инвентар</p>
   </div>
   <nav>
@@ -279,7 +306,7 @@ tr:hover td{background:var(--accent-light)}
     <div onclick="showPage('notifications')" id="nav-notifications" style="display:flex;align-items:center;gap:8px;padding:8px 0;cursor:pointer;margin-bottom:10px">
       <div style="position:relative;display:inline-flex">
         <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="color:var(--muted)"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg>
-        <span id="notif-badge" style="display:none;position:absolute;top:-4px;right:-4px;background:#e05555;color:#fff;border-radius:50%;width:14px;height:14px;font-size:9px;font-weight:700;align-items:center;justify-content:center">0</span>
+        <span id="notif-badge" style="display:none;position:absolute;top:-4px;right:-4px;background:var(--accent);color:#fff;border-radius:50%;width:14px;height:14px;font-size:9px;font-weight:700;align-items:center;justify-content:center">0</span>
       </div>
       <span id="notif-label" style="font-size:12px;color:var(--muted);font-weight:600">Известия</span>
     </div>
@@ -297,9 +324,8 @@ tr:hover td{background:var(--accent-light)}
 <div class="main">
   <!-- Мобилен хедър с лого - показва се само на телефон -->
   <div class="mobile-header">
-    <span style="font-size:18px">🌸</span>
-    <span style="font-weight:800;color:var(--accent);font-size:15px">Eleya Decor</span>
-    <span style="font-size:11px;color:var(--muted)">Управление на инвентар</span>
+    <img src="data:image/png;base64,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" style="height:36px;object-fit:contain" alt="Eleya Decor">
+    <span style="font-size:11px;color:var(--muted);margin-left:4px">Управление на инвентар</span>
   </div>
   <div id="page-content"></div>
 </div>
@@ -477,10 +503,20 @@ tr:hover td{background:var(--accent-light)}
       <div class="form-group">
         <label>Дата на събитието</label>
         <input type="date" id="r-event-date">
+        <div class="quick-dates">
+          <button type="button" class="quick-date-btn" onclick="setDateQuick('r-event-date',0)">Днес</button>
+          <button type="button" class="quick-date-btn" onclick="setDateQuick('r-event-date',1)">Утре</button>
+          <button type="button" class="quick-date-btn" onclick="setDateQuick('r-event-date',7)">+7 дни</button>
+        </div>
       </div>
       <div class="form-group">
         <label>Дата на връщане</label>
         <input type="date" id="r-return-date">
+        <div class="quick-dates">
+          <button type="button" class="quick-date-btn" onclick="setDateQuick('r-return-date',1)">Утре</button>
+          <button type="button" class="quick-date-btn" onclick="setDateQuick('r-return-date',3)">+3 дни</button>
+          <button type="button" class="quick-date-btn" onclick="setDateQuick('r-return-date',7)">+7 дни</button>
+        </div>
       </div>
     </div>
     <div class="form-row">
@@ -620,10 +656,23 @@ tr:hover td{background:var(--accent-light)}
       <div class="form-group">
         <label>Дата на събитието</label>
         <input type="date" id="q-event-date">
+        <div class="quick-dates">
+          <button type="button" class="quick-date-btn" onclick="setDateQuick('q-event-date',0)">Днес</button>
+          <button type="button" class="quick-date-btn" onclick="setDateQuick('q-event-date',7)">+7 дни</button>
+          <button type="button" class="quick-date-btn" onclick="setDateQuick('q-event-date',14)">+14 дни</button>
+          <button type="button" class="quick-date-btn" onclick="setDateQuick('q-event-date',30)">+1 месец</button>
+        </div>
       </div>
       <div class="form-group">
         <label>Час</label>
         <input type="time" id="q-event-time">
+        <div class="quick-dates">
+          <button type="button" class="quick-date-btn" onclick="document.getElementById('q-event-time').value='09:00'">09:00</button>
+          <button type="button" class="quick-date-btn" onclick="document.getElementById('q-event-time').value='11:00'">11:00</button>
+          <button type="button" class="quick-date-btn" onclick="document.getElementById('q-event-time').value='14:00'">14:00</button>
+          <button type="button" class="quick-date-btn" onclick="document.getElementById('q-event-time').value='17:00'">17:00</button>
+          <button type="button" class="quick-date-btn" onclick="document.getElementById('q-event-time').value='19:00'">19:00</button>
+        </div>
       </div>
     </div>
     <div class="form-row">
@@ -668,12 +717,22 @@ tr:hover td{background:var(--accent-light)}
       <div class="form-group">
         <label>Краен срок за депозит</label>
         <input type="date" id="q-deposit-due">
+        <div class="quick-dates">
+          <button type="button" class="quick-date-btn" onclick="setDateQuick('q-deposit-due',3)">+3 дни</button>
+          <button type="button" class="quick-date-btn" onclick="setDateQuick('q-deposit-due',7)">+7 дни</button>
+          <button type="button" class="quick-date-btn" onclick="setDateQuick('q-deposit-due',14)">+14 дни</button>
+        </div>
       </div>
     </div>
     <div class="form-row">
       <div class="form-group">
         <label>Валидна до</label>
         <input type="date" id="q-valid-until">
+        <div class="quick-dates">
+          <button type="button" class="quick-date-btn" onclick="setDateQuick('q-valid-until',3)">+3 дни</button>
+          <button type="button" class="quick-date-btn" onclick="setDateQuick('q-valid-until',7)">+7 дни</button>
+          <button type="button" class="quick-date-btn" onclick="setDateQuick('q-valid-until',14)">+14 дни</button>
+        </div>
       </div>
       <div class="form-group">
         <label>Бележки</label>
@@ -752,6 +811,13 @@ tr:hover td{background:var(--accent-light)}
       <div class="form-group">
         <label>Дата *</label>
         <input type="date" id="ev-date">
+        <div class="quick-dates">
+          <button type="button" class="quick-date-btn" onclick="setDateQuick('ev-date',0)">Днес</button>
+          <button type="button" class="quick-date-btn" onclick="setDateQuick('ev-date',1)">Утре</button>
+          <button type="button" class="quick-date-btn" onclick="setDateQuick('ev-date',7)">+7 дни</button>
+          <button type="button" class="quick-date-btn" onclick="setDateQuick('ev-date',14)">+14 дни</button>
+          <button type="button" class="quick-date-btn" onclick="setDateQuick('ev-date',30)">+1 месец</button>
+        </div>
       </div>
       <div class="form-group">
         <label>Клиент</label>
@@ -762,6 +828,13 @@ tr:hover td{background:var(--accent-light)}
       <div class="form-group">
         <label>Начало</label>
         <input type="time" id="ev-start">
+        <div class="quick-dates">
+          <button type="button" class="quick-date-btn" onclick="document.getElementById('ev-start').value='09:00'">09:00</button>
+          <button type="button" class="quick-date-btn" onclick="document.getElementById('ev-start').value='11:00'">11:00</button>
+          <button type="button" class="quick-date-btn" onclick="document.getElementById('ev-start').value='14:00'">14:00</button>
+          <button type="button" class="quick-date-btn" onclick="document.getElementById('ev-start').value='17:00'">17:00</button>
+          <button type="button" class="quick-date-btn" onclick="document.getElementById('ev-start').value='19:00'">19:00</button>
+        </div>
       </div>
       <div class="form-group">
         <label>Край</label>
@@ -838,6 +911,10 @@ tr:hover td{background:var(--accent-light)}
       <div class="form-group">
         <label>Дата</label>
         <input type="date" id="ex-date">
+        <div class="quick-dates">
+          <button type="button" class="quick-date-btn" onclick="setDateQuick('ex-date',0)">Днес</button>
+          <button type="button" class="quick-date-btn" onclick="setDateQuick('ex-date',-1)">Вчера</button>
+        </div>
       </div>
     </div>
     <div class="form-row">
@@ -1102,6 +1179,15 @@ const QUOTES=[
   {text:'Красивите неща изискват красива грижа.',author:'непознат'},
   {text:'Всяко събитие е спомен — ти го правиш незабравимо.',author:'непознат'},
 ];
+
+// Quick date helper
+function setDateQuick(id, daysOffset){
+  const d = new Date();
+  d.setDate(d.getDate() + daysOffset);
+  const val = d.toISOString().slice(0,10);
+  const el = document.getElementById(id);
+  if(el){ el.value = val; el.dispatchEvent(new Event('change')); }
+}
 
 function getDailyQuote(){
   const day=new Date().getDate()+(new Date().getMonth()*31);
