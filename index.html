@@ -4,6 +4,13 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Eleya Decor · Инвентар</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#e8718a">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Eleya Decor">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="mobile-web-app-capable" content="yes">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
@@ -153,8 +160,9 @@ tr:hover td{background:var(--accent-light)}
 .product-img-placeholder{width:44px;height:44px;border-radius:10px;background:var(--accent-bg);display:flex;align-items:center;justify-content:center;font-size:20px;border:1px solid var(--border);flex-shrink:0}
 #p-img-upload-area:hover{border-color:var(--accent);background:var(--accent-bg)}
 @media(max-width:768px){
-  .sidebar{width:100%;height:auto;position:relative;flex-direction:column}
-  .main{margin-left:0}
+  .sidebar{width:100%;height:auto;position:relative;flex-direction:column;padding-bottom:0}
+  .sidebar nav,.sidebar-bottom{display:none}
+  .main{margin-left:0;padding-bottom:72px}
   .stats-grid{grid-template-columns:1fr 1fr;gap:10px}
   .form-row,.form-row3{grid-template-columns:1fr}
   .cat-grid{grid-template-columns:1fr}
@@ -162,30 +170,40 @@ tr:hover td{background:var(--accent-light)}
   .topbar{flex-wrap:wrap;gap:6px;padding:10px 14px}
   .topbar h2{flex:1;font-size:14px}
   .content{padding:10px 12px}
-  .search-wrap{width:100%;order:5}
-  nav{display:flex;flex-wrap:wrap;padding:4px 10px;gap:2px;border-bottom:1px solid var(--sidebar-border)}
-  .nav-item{padding:6px 10px;font-size:12px;border-left:none;border-radius:8px;flex-shrink:0}
-  .nav-item.active{border-left:none}
-  .nav-section{display:none}
-  .sidebar-bottom{padding:8px 14px}
-  .theme-switcher{gap:8px}
-  .theme-dot{width:22px;height:22px}
+  .search-wrap{width:100%}
   .stat-card{padding:12px 14px}
   .stat-card .value{font-size:20px}
   .stat-card .label{font-size:10px}
-  /* Таблото - двете секции вертикално */
+  .dash-grid,.report-grid{display:flex!important;flex-direction:column!important;gap:12px!important}
   div[style*="grid-template-columns:1fr 1fr;gap:16px"]{display:flex!important;flex-direction:column!important;gap:12px!important}
   .table-wrap{border-radius:10px;overflow-x:auto}
-  table{min-width:500px}
   .actions{gap:3px}
-  .icon-btn{width:25px;height:25px;font-size:11px}
+  .icon-btn{width:28px;height:28px;font-size:12px}
   .btn{padding:7px 12px;font-size:12px}
   .btn-sm{padding:4px 8px;font-size:11px}
-  .modal{padding:16px;width:95vw!important}
+  .modal{padding:16px;width:95vw!important;max-height:88vh;overflow-y:auto}
   .form-actions{flex-direction:column}
   .form-actions .btn{width:100%;justify-content:center}
   .alert-banner{font-size:12px;flex-wrap:wrap}
+  .sidebar .logo{padding:10px 16px}
+  .sidebar .logo h1{font-size:14px}
 }
+.mobile-nav{
+  display:none;position:fixed;bottom:0;left:0;right:0;
+  background:var(--card);border-top:1px solid var(--border);
+  padding:4px 0 env(safe-area-inset-bottom,4px);z-index:200;
+  box-shadow:0 -2px 16px rgba(0,0,0,.1);
+}
+@media(max-width:768px){.mobile-nav{display:flex}}
+.mobile-nav-item{
+  flex:1;display:flex;flex-direction:column;align-items:center;
+  padding:5px 2px;cursor:pointer;color:var(--muted);font-size:9px;
+  font-weight:600;gap:2px;transition:.15s;position:relative;
+}
+.mobile-nav-item.active{color:var(--accent)}
+.mobile-nav-item.active::before{content:'';position:absolute;top:0;left:20%;right:20%;height:2px;background:var(--accent);border-radius:0 0 2px 2px}
+.mobile-nav-item svg{width:20px;height:20px}
+.mobile-nav-badge{position:absolute;top:2px;right:calc(50% - 14px);background:#e05555;color:#fff;border-radius:50%;width:14px;height:14px;font-size:8px;display:flex;align-items:center;justify-content:center;font-weight:700}
 </style>
 </head>
 <body class="theme-rose">
@@ -604,7 +622,12 @@ tr:hover td{background:var(--accent-light)}
     </div>
     <div style="margin:10px 0 6px;font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px">Артикули</div>
     <div id="quote-items-list"></div>
-    <button class="btn btn-secondary btn-sm" style="margin-top:6px" onclick="addQuoteItemRow()">+ Добави артикул</button>
+    <div style="display:flex;gap:8px;margin-top:6px;flex-wrap:wrap">
+      <button class="btn btn-secondary btn-sm" onclick="addQuoteItemRow()">+ Добави артикул</button>
+      <button class="btn btn-secondary btn-sm" onclick="applyPriceTemplate('delivery')">🚚 + Доставка</button>
+      <button class="btn btn-secondary btn-sm" onclick="applyPriceTemplate('assembly')">🔧 + Монтаж</button>
+      <button class="btn btn-secondary btn-sm" onclick="applyPriceTemplate('disassembly')">📦 + Демонтаж</button>
+    </div>
     <div style="margin:14px 0 6px;font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px">Финанси</div>
     <div class="form-row">
       <div class="form-group">
@@ -838,6 +861,60 @@ tr:hover td{background:var(--accent-light)}
   </div>
 </div>
 
+<!-- MOBILE BOTTOM NAVIGATION -->
+<nav class="mobile-nav" id="mobile-nav">
+  <div class="mobile-nav-item active" onclick="showPage('dashboard')" id="mnav-dashboard">
+    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
+    Табло
+  </div>
+  <div class="mobile-nav-item" onclick="showPage('products')" id="mnav-products">
+    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>
+    Продукти
+  </div>
+  <div class="mobile-nav-item" onclick="showPage('quotes')" id="mnav-quotes">
+    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+    Оферти
+  </div>
+  <div class="mobile-nav-item" onclick="showPage('calendar')" id="mnav-calendar">
+    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+    Календар
+  </div>
+  <div class="mobile-nav-item" onclick="showMobileMenu()" id="mnav-more">
+    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
+    Още
+    <span id="mobile-notif-badge" class="mobile-nav-badge" style="display:none">0</span>
+  </div>
+</nav>
+
+<!-- MOBILE MENU OVERLAY -->
+<div class="overlay" id="mobile-menu-modal">
+  <div class="modal" style="width:320px;position:fixed;bottom:80px;right:10px;left:auto;border-radius:16px;padding:16px;max-height:70vh;overflow-y:auto">
+    <div style="font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px">Меню</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+      ${[
+        ['clients','👤','Клиенти'],['rentals','📅','Наеми'],
+        ['movements','↕','Движения'],['suppliers','🏢','Доставчици'],
+        ['finances','💰','Финанси'],['reports','📊','Отчети'],
+        ['categories','🏷','Категории'],['notifications','🔔','Известия']
+      ].map(([page,icon,label])=>`
+        <div onclick="closeModal('mobile-menu-modal');showPage('${page}')" 
+          style="background:var(--bg);border-radius:10px;padding:12px;text-align:center;cursor:pointer;border:1px solid var(--border)">
+          <div style="font-size:20px;margin-bottom:4px">${icon}</div>
+          <div style="font-size:12px;font-weight:600;color:var(--text)">${label}</div>
+        </div>`).join('')}
+    </div>
+    <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border)">
+      <div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:8px">Тема</div>
+      <div style="display:flex;gap:10px">
+        <div style="width:26px;height:26px;border-radius:50%;background:#e8718a;cursor:pointer" onclick="setTheme('rose')"></div>
+        <div style="width:26px;height:26px;border-radius:50%;background:#5a8a6a;cursor:pointer" onclick="setTheme('sage')"></div>
+        <div style="width:26px;height:26px;border-radius:50%;background:#3a7bd5;cursor:pointer" onclick="setTheme('ocean')"></div>
+        <div style="width:26px;height:26px;border-radius:50%;background:#a78bfa;cursor:pointer" onclick="setTheme('dark')"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <script>
@@ -904,7 +981,16 @@ function showPage(page){
   currentPage=page;
   document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
   document.getElementById('nav-'+page)?.classList.add('active');
+  // Mobile nav sync
+  const mobilePages=['dashboard','products','quotes','calendar'];
+  document.querySelectorAll('.mobile-nav-item').forEach(n=>n.classList.remove('active'));
+  if(mobilePages.includes(page)){
+    document.getElementById('mnav-'+page)?.classList.add('active');
+  } else {
+    document.getElementById('mnav-more')?.classList.add('active');
+  }
   const el=document.getElementById('page-content');
+  el.scrollTop=0;
   if(page==='dashboard')renderDashboard(el);
   else if(page==='products')renderProducts(el);
   else if(page==='movements')renderMovementsPage(el);
@@ -917,6 +1003,39 @@ function showPage(page){
   else if(page==='calendar')renderCalendar(el);
   else if(page==='finances')renderFinances(el);
   else if(page==='notifications')renderNotifications(el);
+  // Scroll to top
+  window.scrollTo(0,0);
+}
+
+function showMobileMenu(){
+  // Rebuild mobile menu dynamically
+  const modal=document.getElementById('mobile-menu-modal');
+  const menuContent=modal.querySelector('.modal');
+  menuContent.innerHTML=`
+    <div style="font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px">Меню</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+      ${[['clients','👤','Клиенти'],['rentals','📅','Наеми'],
+        ['movements','↕','Движения'],['suppliers','🏢','Доставчици'],
+        ['finances','💰','Финанси'],['reports','📊','Отчети'],
+        ['categories','🏷','Категории'],
+        ['notifications','🔔','Известия'+(notifications.length>0?` (${notifications.length})`:'')]
+      ].map(([p,icon,label])=>`
+        <div onclick="closeModal('mobile-menu-modal');showPage('${p}')"
+          style="background:var(--bg);border-radius:10px;padding:12px;text-align:center;cursor:pointer;border:1px solid var(--border)">
+          <div style="font-size:22px;margin-bottom:4px">${icon}</div>
+          <div style="font-size:12px;font-weight:600;color:var(--text)">${label}</div>
+        </div>`).join('')}
+    </div>
+    <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border)">
+      <div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:8px">Тема</div>
+      <div style="display:flex;gap:10px">
+        <div style="width:26px;height:26px;border-radius:50%;background:#e8718a;cursor:pointer;border:2px solid transparent" onclick="setTheme('rose');closeModal('mobile-menu-modal')"></div>
+        <div style="width:26px;height:26px;border-radius:50%;background:#5a8a6a;cursor:pointer;border:2px solid transparent" onclick="setTheme('sage');closeModal('mobile-menu-modal')"></div>
+        <div style="width:26px;height:26px;border-radius:50%;background:#3a7bd5;cursor:pointer;border:2px solid transparent" onclick="setTheme('ocean');closeModal('mobile-menu-modal')"></div>
+        <div style="width:26px;height:26px;border-radius:50%;background:#a78bfa;cursor:pointer;border:2px solid transparent" onclick="setTheme('dark');closeModal('mobile-menu-modal')"></div>
+      </div>
+    </div>`;
+  openModal('mobile-menu-modal');
 }
 
 // ═══ DAILY QUOTE ═══════════════════════════════════════════
@@ -1109,11 +1228,10 @@ function updateNotifBadge(){
   const count=notifications.length;
   const badge=document.getElementById('notif-badge');
   const label=document.getElementById('notif-label');
-  if(badge){
-    badge.textContent=count>9?'9+':count;
-    badge.style.display=count>0?'inline-flex':'none';
-  }
+  const mobileBadge=document.getElementById('mobile-notif-badge');
+  if(badge){badge.textContent=count>9?'9+':count;badge.style.display=count>0?'inline-flex':'none';}
   if(label) label.style.color=count>0?'var(--accent)':'var(--muted)';
+  if(mobileBadge){mobileBadge.textContent=count>9?'9+':count;mobileBadge.style.display=count>0?'flex':'none';}
 }
 
 async function createNotification(type,title,message,linkTo,linkId){
@@ -1465,6 +1583,7 @@ function renderSuppliers(el){
               <div style="font-size:11px;color:var(--muted);margin-top:2px">${rating}/5</div>
             </td>
             <td><div class="actions">
+              <button class="icon-btn" onclick="openSupplierOrderEmail('${s.id}')" title="Изпрати имейл поръчка">📧</button>
               <button class="icon-btn" onclick="rateSupplier('${s.id}',${rating})" title="Оцени">⭐</button>
               <button class="icon-btn danger" onclick="deleteSupplier('${s.id}')">🗑</button>
             </div></td>
@@ -1475,13 +1594,183 @@ function renderSuppliers(el){
 }
 
 async function rateSupplier(id,current){
-  const r=prompt(`Оцени доставчика (1-5):\n1 ⭐ — Лош\n2 ⭐⭐ — Среден\n3 ⭐⭐⭐ — Добър\n4 ⭐⭐⭐⭐ — Много добър\n5 ⭐⭐⭐⭐⭐ — Отличен`,current||5);
+  const r=prompt(`Оцени доставчика (1-5):\n1⭐ Лош · 2⭐⭐ Среден · 3⭐⭐⭐ Добър · 4⭐⭐⭐⭐ Много добър · 5⭐⭐⭐⭐⭐ Отличен`,current||5);
   const rating=parseInt(r);
   if(!rating||rating<1||rating>5)return;
   await db.from('suppliers').update({rating}).eq('id',id);
   showToast('Рейтингът е записан','success');
-  await loadSuppliers();
-  showPage(currentPage);
+  await loadSuppliers();showPage(currentPage);
+}
+
+function emailSupplier(supplierId){
+  const s=suppliers.find(x=>x.id===supplierId);
+  if(!s){showToast('Доставчикът не е намерен','error');return;}
+  const supplierProducts=products.filter(p=>p.supplier_id===supplierId);
+  const orderedProducts=supplierProducts.filter(p=>p.status==='ordered');
+  const hour=new Date().getHours();
+  const greeting=hour<12?'Добро утро':'Добър ден';
+
+  const orderTemplate=`${greeting},\n\nИзпращам запитване за следните артикули:\n\n${supplierProducts.map((p,i)=>`${i+1}. ${p.name}${p.sku?' (SKU: '+p.sku+')':''} — ${p.min_quantity} ${p.unit}`).join('\n')}\n\nМоля, потвърдете наличност и цени.\n\nС уважение,\nEleya Decor 🌸`;
+
+  const historyText=`История на поръчките от ${s.name}:\n\n${supplierProducts.map(p=>`• ${p.name}: ${p.quantity} ${p.unit} налично${p.ordered_date?' | Последна поръчка: '+p.ordered_date:''}${p.expected_date?' | Очаква се: '+p.expected_date:''}`).join('\n')}\n\nОбщо продукти от доставчика: ${supplierProducts.length}`;
+
+  // Create modal
+  let modal=document.getElementById('supplier-email-modal');
+  if(!modal){modal=document.createElement('div');modal.id='supplier-email-modal';modal.className='overlay';document.body.appendChild(modal);}
+
+  modal.innerHTML=`
+  <div class="modal" style="width:560px">
+    <div class="modal-hdr">
+      <h3>📧 Email до ${s.name}</h3>
+      <button class="close-btn" onclick="closeModal('supplier-email-modal')">×</button>
+    </div>
+    ${!s.email?`<div class="alert-banner" style="background:#fdf3e8;border-color:#f59e0b;color:#b45309;margin-bottom:12px">⚠️ Добави имейл на доставчика за директно изпращане</div>`:''}
+    <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
+      <button class="btn btn-secondary btn-sm active" onclick="document.getElementById('sup-email-body').value=\`${orderTemplate.replace(/`/g,"'")}\`">📋 Запитване за поръчка</button>
+      <button class="btn btn-secondary btn-sm" onclick="document.getElementById('sup-email-body').value=\`${historyText.replace(/`/g,"'")}\`">📊 История на поръчките</button>
+    </div>
+    <div class="form-group">
+      <label>До</label>
+      <input type="text" id="sup-email-to" value="${s.email||''}" placeholder="email@доставчик.com">
+    </div>
+    <div class="form-group">
+      <label>Тема</label>
+      <input type="text" id="sup-email-subj" value="Запитване за наличности — Eleya Decor">
+    </div>
+    <div class="form-group">
+      <label>Съобщение</label>
+      <textarea id="sup-email-body" rows="10" style="font-size:13px;line-height:1.6">${orderTemplate}</textarea>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:12px">
+      <button class="btn btn-primary" onclick="sendSupplierEmail()">📧 Отвори в имейл клиент</button>
+      <button class="btn btn-secondary" onclick="navigator.clipboard.writeText(document.getElementById('sup-email-body').value).then(()=>showToast('Копирано!','success'))">📋 Копирай</button>
+    </div>
+    <div style="margin-top:16px;padding-top:12px;border-top:1px solid var(--border)">
+      <div style="font-size:12px;font-weight:700;color:var(--muted);margin-bottom:8px">📦 Продукти от този доставчик:</div>
+      ${supplierProducts.map(p=>`<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border);font-size:12px">
+        <span><strong>${p.name}</strong>${p.sku?' · '+p.sku:''}</span>
+        <span style="color:${p.quantity<=p.min_quantity?'#e05555':'#3d6b50'};font-weight:700">${p.quantity} ${p.unit}</span>
+      </div>`).join('')}
+    </div>
+  </div>`;
+  openModal('supplier-email-modal');
+}
+
+function sendSupplierEmail(){
+  const to=document.getElementById('sup-email-to').value;
+  const subj=encodeURIComponent(document.getElementById('sup-email-subj').value);
+  const body=encodeURIComponent(document.getElementById('sup-email-body').value);
+  if(!to){showToast('Въведи имейл адрес!','error');return;}
+  window.open(`mailto:${to}?subject=${subj}&body=${body}`);
+}
+
+function openSupplierOrderEmail(supplierId){
+  const s=suppliers.find(x=>x.id===supplierId);
+  if(!s){showToast('Доставчикът не е намерен','error');return;}
+
+  // Намери всички поръчани продукти от този доставчик
+  const orderedProducts=products.filter(p=>p.supplier_id===supplierId&&p.status==='ordered');
+  // И всички продукти изобщо от него
+  const allProducts=products.filter(p=>p.supplier_id===supplierId);
+
+  const hour=new Date().getHours();
+  const timeGreet=hour<12?'Добро утро':hour<17?'Добър ден':'Добър вечер';
+
+  let modal=document.getElementById('supplier-email-modal');
+  if(!modal){
+    modal=document.createElement('div');
+    modal.id='supplier-email-modal';
+    modal.className='overlay';
+    document.body.appendChild(modal);
+  }
+
+  const defaultOrder=orderedProducts.length>0
+    ?orderedProducts.map(p=>`- ${p.name}${p.sku?' ('+p.sku+')':''} — количество: ___`).join('\n')
+    :'- (въведи артикули)';
+
+  const templates={
+    order:{
+      label:'🛒 Нова поръчка',
+      text:`${timeGreet},\n\nОт Eleya Decor бих искала да направя следната поръчка:\n\n${defaultOrder}\n\nМоля потвърдете наличността и срока на доставка.\n\nС уважение,\nEleya Decor 🌸`
+    },
+    check:{
+      label:'📦 Проверка на поръчка',
+      text:`${timeGreet},\n\nБих искала да проверя статуса на нашата поръчка.\n\nОчаквани артикули:\n${orderedProducts.map(p=>`- ${p.name} (очаквано: ${p.expected_date||'—'})`).join('\n')||'(по-ранна поръчка)'}\n\nМоля информирайте ме кога да очаквам доставката.\n\nС уважение,\nEleya Decor 🌸`
+    },
+    price:{
+      label:'💰 Запитване за цена',
+      text:`${timeGreet},\n\nБих искала да получа актуална ценова листа за следните артикули:\n\n${allProducts.map(p=>`- ${p.name}${p.sku?' ('+p.sku+')':''}`).join('\n')||'(въведи артикули)'}\n\nБлагодаря предварително!\n\nС уважение,\nEleya Decor 🌸`
+    },
+    complaint:{
+      label:'⚠️ Рекламация',
+      text:`${timeGreet},\n\nОтносно последната ни доставка — установихме проблем с качеството/количеството на следните артикули:\n\n(опиши проблема)\n\nМоля свържете се с мен за уреждане на въпроса.\n\nС уважение,\nEleya Decor 🌸`
+    }
+  };
+
+  window._supplierTemplates=templates;
+
+  modal.innerHTML=`
+  <div class="modal" style="width:580px">
+    <div class="modal-hdr">
+      <h3>📧 Имейл до ${s.name}</h3>
+      <button class="close-btn" onclick="closeModal('supplier-email-modal')">×</button>
+    </div>
+    ${s.email?'':`<div style="background:var(--warn-bg);border:1px solid var(--warn);border-radius:8px;padding:10px 14px;font-size:13px;color:var(--warn);margin-bottom:12px">
+      ⚠️ Доставчикът няма имейл. <button class="btn btn-sm btn-secondary" onclick="closeModal('supplier-email-modal');editSupplierQuick('${s.id}')">Добави имейл</button>
+    </div>`}
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px">
+      ${Object.entries(templates).map(([key,t])=>`
+        <button class="btn btn-secondary btn-sm" onclick="selectSupplierTemplate('${key}')" id="stmpl-${key}">${t.label}</button>
+      `).join('')}
+    </div>
+    <div class="form-group">
+      <label>До</label>
+      <input type="email" id="supp-email-to" value="${s.email||''}" placeholder="email@доставчик.com">
+    </div>
+    <div class="form-group">
+      <label>Относно</label>
+      <input type="text" id="supp-email-subject" value="Поръчка от Eleya Decor">
+    </div>
+    <div class="form-group">
+      <label>Съобщение</label>
+      <textarea id="supp-email-text" rows="10" style="font-size:13px;line-height:1.6"></textarea>
+    </div>
+    ${orderedProducts.length>0?`
+    <div style="background:var(--accent-bg);border-radius:8px;padding:10px 14px;margin-bottom:12px;font-size:12px">
+      📦 <strong>${orderedProducts.length} поръчани артикула</strong> от ${s.name}:
+      ${orderedProducts.map(p=>`<span class="badge badge-blue" style="margin:2px">${p.name}</span>`).join('')}
+    </div>`:''}
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <button class="btn" style="background:#EA4335;color:#fff" onclick="sendSupplierEmail()">📧 Изпрати имейл</button>
+      <button class="btn btn-secondary" onclick="copySupplierEmail()">📋 Копирай текста</button>
+    </div>
+  </div>`;
+
+  openModal('supplier-email-modal');
+  selectSupplierTemplate('order');
+}
+
+function selectSupplierTemplate(key){
+  const t=window._supplierTemplates?.[key];
+  if(!t)return;
+  document.getElementById('supp-email-text').value=t.text;
+  document.querySelectorAll('[id^="stmpl-"]').forEach(b=>{b.classList.remove('btn-primary');b.classList.add('btn-secondary');});
+  const btn=document.getElementById('stmpl-'+key);
+  if(btn){btn.classList.remove('btn-secondary');btn.classList.add('btn-primary');}
+}
+
+function sendSupplierEmail(){
+  const to=document.getElementById('supp-email-to')?.value||'';
+  const subject=encodeURIComponent(document.getElementById('supp-email-subject')?.value||'Поръчка от Eleya Decor');
+  const body=encodeURIComponent(document.getElementById('supp-email-text')?.value||'');
+  if(!to){showToast('Въведи имейл адрес!','error');return;}
+  window.open(`mailto:${to}?subject=${subject}&body=${body}`);
+  showToast('Имейл клиентът е отворен!','success');
+}
+
+function copySupplierEmail(){
+  const text=document.getElementById('supp-email-text')?.value||'';
+  navigator.clipboard.writeText(text).then(()=>showToast('Текстът е копиран!','success'));
 }
 
 function renderCategories(el){
@@ -2045,6 +2334,7 @@ function renderFinances(el){
       <div class="section-tab ${finTab==='pl'?'active':''}" onclick="finTab='pl';renderFinances(document.getElementById('page-content'))">💰 P&L по оферти</div>
       <div class="section-tab ${finTab==='expenses'?'active':''}" onclick="finTab='expenses';renderFinances(document.getElementById('page-content'))">🧾 Разходи</div>
       <div class="section-tab ${finTab==='cashflow'?'active':''}" onclick="finTab='cashflow';renderFinances(document.getElementById('page-content'))">📈 Cash Flow</div>
+      <div class="section-tab ${finTab==='tax'?'active':''}" onclick="finTab='tax';renderFinances(document.getElementById('page-content'))">🧾 НАП готовност</div>
     </div>
 
     ${finTab==='overview'?`
@@ -2142,6 +2432,48 @@ function renderFinances(el){
           <td><span class="badge ${QUOTE_STATUS[q.status]?.css||'badge-gray'}">${QUOTE_STATUS[q.status]?.label||q.status}</span></td>
         </tr>`;}).join('')}
       </tbody></table>`}
+    </div>`:''}
+
+    ${finTab==='tax'?`
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px">
+      <div class="stat-card good"><div class="label">Общо приходи (оборот)</div><div class="value">${totalRevenue.toFixed(2)} лв</div><div class="sub">за целия период</div></div>
+      <div class="stat-card"><div class="label">Общо разходи</div><div class="value" style="color:#e05555">${totalExpenses.toFixed(2)} лв</div><div class="sub">материали + услуги</div></div>
+      <div class="stat-card good"><div class="label">Нетна печалба</div><div class="value">${(totalRevenue-totalExpenses).toFixed(2)} лв</div></div>
+      <div class="stat-card"><div class="label">Данъчна основа (15%)</div><div class="value">${((totalRevenue-totalExpenses)*0.15).toFixed(2)} лв</div><div class="sub">ориентировъчно</div></div>
+    </div>
+    <div class="table-wrap" style="margin-bottom:16px">
+      <div class="table-header">
+        <h3>🧾 Разходи по категории за счетоводител</h3>
+        <button class="btn btn-primary btn-sm" onclick="exportTaxCSV()">⬇ Експорт CSV</button>
+      </div>
+      <table><thead><tr><th>Категория</th><th>Брой</th><th>Сума</th><th>% от разходите</th></tr></thead><tbody>
+      ${Object.entries(expByCategory).sort((a,b)=>b[1]-a[1]).map(([cat,amt])=>`<tr>
+        <td><strong>${cat}</strong></td>
+        <td>${expenses.filter(e=>e.category===cat).length}</td>
+        <td style="font-weight:700;color:#e05555">${amt.toFixed(2)} лв</td>
+        <td><div style="display:flex;align-items:center;gap:8px">
+          <div style="flex:1;height:6px;background:var(--bg);border-radius:3px">
+            <div style="height:100%;width:${totalExpenses>0?(amt/totalExpenses*100).toFixed(0):0}%;background:var(--accent);border-radius:3px"></div>
+          </div>
+          <span style="font-size:12px;color:var(--muted)">${totalExpenses>0?(amt/totalExpenses*100).toFixed(0):0}%</span>
+        </div></td>
+      </tr>`).join('')||'<tr><td colspan="4"><div class="empty"><p>Няма разходи</p></div></td></tr>'}
+      </tbody></table>
+    </div>
+    <div class="table-wrap">
+      <div class="table-header"><h3>📋 Приходи по тримесечие</h3></div>
+      <table><thead><tr><th>Тримесечие</th><th>Приходи</th><th>Разходи</th><th>Печалба</th></tr></thead><tbody>
+      ${[1,2,3,4].map(q=>{
+        const months=[(q-1)*3+1,(q-1)*3+2,(q-1)*3+3];
+        const qRev=paidQuotes.filter(qt=>qt.event_date&&months.includes(new Date(qt.event_date).getMonth()+1)).reduce((s,qt)=>s+(qt.total_price||0),0);
+        const qExp=expenses.filter(e=>e.date&&months.includes(new Date(e.date).getMonth()+1)).reduce((s,e)=>s+(e.amount||0),0);
+        return`<tr>
+          <td><strong>Q${q} ${new Date().getFullYear()}</strong><br><span style="font-size:11px;color:var(--muted)">${months.map(m=>['Яну','Фев','Мар','Апр','Май','Юни','Юли','Авг','Сеп','Окт','Ное','Дек'][m-1]).join(', ')}</span></td>
+          <td style="color:var(--accent);font-weight:700">${qRev.toFixed(2)} лв</td>
+          <td style="color:#e05555">${qExp.toFixed(2)} лв</td>
+          <td style="font-weight:700;color:${qRev-qExp>=0?'#3d6b50':'#e05555'}">${(qRev-qExp).toFixed(2)} лв</td>
+        </tr>`;}).join('')}
+      </tbody></table>
     </div>`:''}
 
   </div>`;
@@ -2580,6 +2912,7 @@ function renderQuotes(el){
             <td><div class="actions">
               <button class="icon-btn" title="Съобщения" onclick="openMessagingModal('${q.id}')">💬</button>
               <button class="icon-btn" title="Смени статус" onclick="changeQuoteStatus('${q.id}','${q.status}')">🔄</button>
+              <button class="icon-btn" title="Договор" onclick="generateContract('${q.id}')">📃</button>
               <button class="icon-btn" title="PDF оферта" onclick="generateQuotePDF('${q.id}')">📄</button>
               <button class="icon-btn" title="Пакинг лист" onclick="generatePackingList('${q.id}')">📦</button>
               <button class="icon-btn" title="Редактирай" onclick="editQuote('${q.id}')">✏️</button>
@@ -2693,6 +3026,23 @@ function onQuoteProductChange(i,productId){
     renderQuoteItemRows();
   }
   updateQuoteSummary();
+}
+
+// Ценови шаблони — Пепи ги настройва веднъж
+const PRICE_TEMPLATES={
+  delivery:  {description:'🚚 Доставка',section:'Услуги',unit_price:30,cost_price:15},
+  assembly:  {description:'🔧 Монтаж',section:'Услуги',unit_price:50,cost_price:20},
+  disassembly:{description:'📦 Демонтаж',section:'Услуги',unit_price:30,cost_price:10},
+  luxury:    {description:'💎 Луксозен пакет',section:'Услуги',unit_price:200,cost_price:80},
+};
+
+function applyPriceTemplate(key){
+  const t=PRICE_TEMPLATES[key];
+  if(!t)return;
+  quoteItemRows.push({product_id:'',description:t.description,quantity:1,unit_price:t.unit_price,cost_price:t.cost_price,section:t.section});
+  renderQuoteItemRows();
+  updateQuoteSummary();
+  showToast(t.description+' добавено','success');
 }
 
 function updateQuoteSummary(){
@@ -2827,6 +3177,137 @@ async function markReceived(productId){
 }
 
 // ═══ PDF ГЕНЕРАТОР ════════════════════════════════════════
+// ═══ ДОГОВОРЕН СЛОЙ ════════════════════════════════════════
+function generateContract(id){
+  const q=quotes.find(x=>x.id===id);
+  if(!q)return;
+  const client=clients.find(c=>c.id===q.client_id);
+  const today=new Date().toLocaleDateString('bg');
+  const win=window.open('','_blank');
+  win.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8">
+  <title>Договор — ${client?.name||''}</title>
+  <style>
+    body{font-family:'Times New Roman',serif;margin:0;padding:40px;color:#1a1a2e;max-width:800px;margin:0 auto;line-height:1.7;font-size:14px}
+    h1{font-size:20px;text-align:center;margin-bottom:4px}
+    h2{font-size:15px;margin:20px 0 8px;text-decoration:underline}
+    .header{text-align:center;margin-bottom:30px;padding-bottom:20px;border-bottom:2px solid #333}
+    .logo{font-size:22px;font-weight:bold;color:#c4546d;margin-bottom:4px}
+    .parties{display:grid;grid-template-columns:1fr 1fr;gap:30px;margin:20px 0;background:#f9f9f9;padding:16px;border-radius:4px}
+    .party h3{font-size:13px;font-weight:bold;margin-bottom:8px;text-transform:uppercase}
+    .party p{margin:2px 0;font-size:13px}
+    .clause{margin-bottom:14px}
+    .clause strong{display:block;margin-bottom:4px}
+    table{width:100%;border-collapse:collapse;margin:12px 0}
+    th,td{padding:8px 10px;border:1px solid #ccc;font-size:13px}
+    th{background:#f0f0f0;font-weight:bold}
+    .signature-area{display:grid;grid-template-columns:1fr 1fr;gap:40px;margin-top:50px}
+    .sign-box{border-top:1px solid #333;padding-top:8px;text-align:center;font-size:12px}
+    .highlight{background:#fffbe6;border-left:3px solid #e8a000;padding:8px 12px;margin:10px 0}
+    .force-majeure{background:#f8f0f0;border-left:3px solid #c4546d;padding:10px 12px;margin:10px 0;font-size:13px}
+    @media print{body{padding:20px}}
+  </style></head><body>
+  <div class="header">
+    <div class="logo">🌸 Eleya Decor</div>
+    <h1>ДОГОВОР ЗА ДЕКОРАТОРСКИ УСЛУГИ</h1>
+    <p style="font-size:13px;color:#666">Дата: ${today} &nbsp;|&nbsp; Рег. №: ED-${Date.now().toString().slice(-6)}</p>
+  </div>
+
+  <div class="parties">
+    <div class="party">
+      <h3>Изпълнител</h3>
+      <p><strong>Eleya Decor</strong></p>
+      <p>Казанлък, България</p>
+    </div>
+    <div class="party">
+      <h3>Клиент</h3>
+      <p><strong>${client?.name||'________________'}</strong></p>
+      <p>Тел: ${client?.phone||'________________'}</p>
+      <p>Email: ${client?.email||'________________'}</p>
+    </div>
+  </div>
+
+  <h2>1. ПРЕДМЕТ НА ДОГОВОРА</h2>
+  <div class="clause">
+    Изпълнителят се задължава да извърши декораторски услуги за:<br>
+    <strong>Събитие:</strong> ${q.event_type||'________________'}<br>
+    <strong>Дата:</strong> ${q.event_date||'________________'}${q.event_time?' в '+q.event_time:''}<br>
+    <strong>Място:</strong> ${q.event_address||'________________'}<br>
+    <strong>Брой гости:</strong> ${q.guest_count||'________________'}
+  </div>
+
+  <h2>2. АРТИКУЛИ И УСЛУГИ</h2>
+  <table>
+    <thead><tr><th>Описание</th><th>Кол.</th><th>Ед. цена</th><th>Общо</th></tr></thead>
+    <tbody>
+      ${(q.quote_items||[]).map(i=>`<tr>
+        <td>${i.description}</td>
+        <td>${i.quantity}</td>
+        <td>${(i.unit_price||0).toFixed(2)} лв</td>
+        <td>${((i.unit_price||0)*(i.quantity||1)).toFixed(2)} лв</td>
+      </tr>`).join('')}
+      ${q.includes_delivery&&q.delivery_price>0?`<tr>
+        <td>Доставка${q.includes_assembly?' + монтаж':''}${q.includes_disassembly?' + демонтаж':''}</td>
+        <td>1</td><td>${q.delivery_price.toFixed(2)} лв</td><td>${q.delivery_price.toFixed(2)} лв</td>
+      </tr>`:''}
+    </tbody>
+  </table>
+  <div class="highlight">
+    <strong>ОБЩА СУМА: ${(q.total_price||0).toFixed(2)} лв</strong>
+  </div>
+
+  <h2>3. ПЛАЩАНЕ</h2>
+  <div class="clause">
+    ${q.deposit_amount>0?`<strong>Депозит:</strong> ${q.deposit_amount.toFixed(2)} лв — дължим до ${q.deposit_due_date||'________________'}<br>`:''}
+    <strong>Остатък:</strong> ${((q.total_price||0)-(q.deposit_amount||0)).toFixed(2)} лв — дължим при монтажа / деня преди събитието
+  </div>
+
+  <h2>4. АНУЛИРАНЕ</h2>
+  <div class="clause">
+    <table>
+      <tr><th>Период преди събитието</th><th>Условие</th></tr>
+      <tr><td>Над 14 дни</td><td>Депозитът се връща изцяло</td></tr>
+      <tr><td>7—14 дни</td><td>Връща се 50% от депозита</td></tr>
+      <tr><td>Под 7 дни</td><td>Депозитът не се връща</td></tr>
+    </table>
+  </div>
+
+  <h2>5. ФОРСМАЖОР</h2>
+  <div class="force-majeure">
+    Нито една от страните не носи отговорност при невъзможност за изпълнение, причинена от обстоятелства извън техен контрол — природни бедствия, епидемии, извънредно положение, пожар, наводнение или друга непреодолима сила.<br><br>
+    При форсмажорно обстоятелство от страна на Изпълнителя — депозитът се връща изцяло.<br>
+    При форсмажорно обстоятелство от страна на Клиента — страните договарят нова дата без допълнително плащане.
+  </div>
+
+  <h2>6. ОТГОВОРНОСТ ЗА ЩЕТИ</h2>
+  <div class="clause">
+    Изпълнителят не носи отговорност за щети, причинени от трети лица след монтажа. Наетото оборудване се връща в същото състояние. При щета — клиентът дължи обезщетение по пазарна стойност.
+  </div>
+
+  <h2>7. ПОТВЪРЖДЕНИЕ</h2>
+  <div class="clause">
+    С подписването на този договор Клиентът потвърждава, че е прочел и се съгласява с всички условия.
+  </div>
+
+  <div class="signature-area">
+    <div class="sign-box">
+      <p>Дата: _______________</p>
+      <p>Подпис: _______________</p>
+      <p><strong>Изпълнител: Eleya Decor</strong></p>
+    </div>
+    <div class="sign-box">
+      <p>Дата: _______________</p>
+      <p>Подпис: _______________</p>
+      <p><strong>Клиент: ${client?.name||'________________'}</strong></p>
+    </div>
+  </div>
+
+  <div style="text-align:center;margin-top:30px">
+    <button onclick="window.print()" style="background:#c4546d;color:#fff;border:none;padding:10px 24px;border-radius:8px;font-size:14px;cursor:pointer">🖨️ Принтирай / Запази PDF</button>
+  </div>
+  </body></html>`);
+  win.document.close();
+}
+
 function generateQuotePDF(id){
   const q=quotes.find(x=>x.id===id);
   if(!q)return;
@@ -2995,6 +3476,31 @@ function renderCapacityDay(date){
   return{events:dayEvents,totalMins,hours,pct,status:pct>100?'danger':pct>70?'warn':'ok'};
 }
 
+function exportTaxCSV(){
+  const rows=[['Дата','Описание','Категория','Доставчик','Сума (лв)','Бележка']];
+  expenses.forEach(e=>rows.push([
+    e.date||'',e.description,e.category||'',e.suppliers?.name||'',
+    (e.amount||0).toFixed(2),e.receipt_note||''
+  ]));
+  rows.push([]);
+  rows.push(['','','','ОБЩО РАЗХОДИ:',expenses.reduce((s,e)=>s+(e.amount||0),0).toFixed(2),'']);
+  const paidQ=quotes.filter(q=>q.status==='deposit_paid'||q.status==='accepted');
+  rows.push([]);
+  rows.push(['ПРИХОДИ','','','','','']);
+  rows.push(['Дата','Клиент','Тип събитие','','Сума (лв)','']);
+  paidQ.forEach(q=>rows.push([q.event_date||'',q.clients?.name||'',q.event_type||'','',
+    (q.total_price||0).toFixed(2),'']));
+  rows.push([]);
+  rows.push(['','','','ОБЩО ПРИХОДИ:',paidQ.reduce((s,q)=>s+(q.total_price||0),0).toFixed(2),'']);
+  const csv=rows.map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
+  const blob=new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download=`eleya-decor-счетоводство-${new Date().toISOString().slice(0,7)}.csv`;
+  a.click();
+  showToast('CSV за счетоводител е изтеглен!','success');
+}
+
 function exportCSV(){
   const rows=[['Наименование','SKU','Баркод','Категория','Количество','Мерна ед.','Цена','Локация','Доставчик']];
   products.forEach(p=>rows.push([p.name,p.sku||'',p.barcode||'',p.categories?.name||'',p.quantity,p.unit,p.price,p.location||'',p.suppliers?.name||'']));
@@ -3016,6 +3522,26 @@ function showToast(msg,type=''){
 }
 
 init();
+
+// PWA Service Worker
+if('serviceWorker' in navigator){
+  navigator.serviceWorker.register('sw.js').catch(()=>{});
+}
+
+// PWA Install prompt
+let deferredPrompt;
+window.addEventListener('beforeinstallprompt',e=>{
+  e.preventDefault();
+  deferredPrompt=e;
+  // Show install button if not installed
+  const btn=document.createElement('div');
+  btn.id='pwa-install';
+  btn.style.cssText='position:fixed;bottom:80px;right:16px;background:var(--accent);color:#fff;padding:10px 16px;border-radius:20px;font-size:13px;font-weight:700;cursor:pointer;z-index:999;box-shadow:0 4px 12px rgba(0,0,0,.2);display:flex;align-items:center;gap:6px';
+  btn.innerHTML='📱 Инсталирай като приложение';
+  btn.onclick=()=>{deferredPrompt.prompt();btn.remove();};
+  document.body.appendChild(btn);
+  setTimeout(()=>btn.remove(),15000);
+});
 </script>
 </body>
 </html>
