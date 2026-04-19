@@ -179,7 +179,7 @@ input[type="date"]:focus,input[type="time"]:focus{
   transition:.15s;white-space:nowrap;
 }
 .quick-date-btn:hover{background:var(--accent);color:#fff;border-color:var(--accent)}
-.section-tabs{display:flex;gap:4px;background:var(--bg);border-radius:8px;padding:3px;margin-bottom:16px;width:fit-content}
+.section-tabs{overflow-x:auto;-webkit-overflow-scrolling:touch;flex-wrap:nowrap;display:flex;gap:4px;background:var(--bg);border-radius:8px;padding:3px;margin-bottom:16px;width:fit-content}
 .section-tab{padding:6px 14px;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;color:var(--muted);transition:.15s}
 .section-tab.active{background:var(--card);color:var(--accent);box-shadow:0 1px 3px rgba(0,0,0,.1)}
 .alert-banner{background:var(--warn-bg);border:1px solid #f5d9a8;border-radius:10px;padding:12px 16px;margin-bottom:16px;display:flex;align-items:center;gap:10px;font-size:13px;color:var(--warn)}
@@ -187,38 +187,90 @@ input[type="date"]:focus,input[type="time"]:focus{
 .product-img-placeholder{width:44px;height:44px;border-radius:10px;background:var(--accent-bg);display:flex;align-items:center;justify-content:center;font-size:20px;border:1px solid var(--border);flex-shrink:0}
 #p-img-upload-area:hover{border-color:var(--accent);background:var(--accent-bg)}
 @media(max-width:768px){
-  /* Скрий изцяло sidebar на мобилен */
+  /* Скрий sidebar изцяло */
   .sidebar{display:none!important}
-  .main{margin-left:0!important;padding-bottom:72px}
+  .main{margin-left:0!important;padding-bottom:76px}
+
+  /* Layout */
   .stats-grid{grid-template-columns:1fr 1fr;gap:10px}
-  .form-row,.form-row3{grid-template-columns:1fr}
-  .cat-grid{grid-template-columns:1fr}
-  th,td{padding:6px 8px;font-size:11px}
+  .form-row,.form-row3{grid-template-columns:1fr!important}
+  .cat-grid{grid-template-columns:1fr 1fr}
+
+  /* Topbar */
   .topbar{flex-wrap:wrap;gap:6px;padding:10px 14px}
-  .topbar h2{flex:1;font-size:14px}
+  .topbar h2{flex:1;font-size:15px;min-width:0}
+  .topbar .search-wrap{order:10;width:100%}
+
+  /* Content */
   .content{padding:10px 12px}
-  .search-wrap{width:100%}
-  .stat-card{padding:12px 14px}
-  .stat-card .value{font-size:20px}
-  .stat-card .label{font-size:10px}
+
+  /* Stat cards */
+  .stat-card{padding:10px 12px}
+  .stat-card .value{font-size:18px}
+  .stat-card .label{font-size:10px;letter-spacing:.3px}
+  .stat-card .sub{font-size:10px}
+
+  /* Grids → column */
   .dash-grid,.report-grid{display:flex!important;flex-direction:column!important;gap:12px!important}
   div[style*="grid-template-columns:1fr 1fr;gap:16px"]{display:flex!important;flex-direction:column!important;gap:12px!important}
-  /* Таблиците scroll-ват хоризонтално */
-  .table-wrap{border-radius:10px;overflow-x:auto;-webkit-overflow-scrolling:touch}
-  table{min-width:480px}
-  /* Календар на мобилен - вертикално */
   div[style*="grid-template-columns:1fr 260px"]{display:flex!important;flex-direction:column!important;gap:12px!important}
   .cal-content{display:flex!important;flex-direction:column!important;gap:12px!important}
-  .actions{gap:3px}
-  .icon-btn{width:28px;height:28px;font-size:12px}
+
+  /* Финанси 5 колони → 2 */
+  div[style*="repeat(5,1fr)"]{grid-template-columns:1fr 1fr!important}
+
+  /* Tables */
+  .table-wrap{border-radius:10px;overflow-x:auto;-webkit-overflow-scrolling:touch}
+  table{min-width:440px}
+  th{font-size:10px;padding:6px 8px;white-space:nowrap}
+  td{font-size:12px;padding:7px 8px}
+
+  /* Buttons */
   .btn{padding:7px 12px;font-size:12px}
   .btn-sm{padding:4px 8px;font-size:11px}
-  .modal{padding:16px;width:95vw!important;max-height:88vh;overflow-y:auto}
-  .form-actions{flex-direction:column}
+  .actions{gap:3px;flex-wrap:wrap}
+  .icon-btn{width:28px;height:28px;font-size:12px}
+
+  /* Modal */
+  .modal{padding:14px;width:96vw!important;max-height:88vh;overflow-y:auto;border-radius:16px}
+  .form-actions{flex-direction:column;gap:8px}
   .form-actions .btn{width:100%;justify-content:center}
-  .alert-banner{font-size:12px;flex-wrap:wrap}
-  /* Finances grid */
-  div[style*="repeat(5,1fr)"]{grid-template-columns:1fr 1fr!important}
+
+  /* Misc */
+  .alert-banner{font-size:12px;flex-wrap:wrap;gap:6px}
+  .section-tabs{width:100%;overflow-x:auto}
+  .section-tab{white-space:nowrap;font-size:11px;padding:5px 10px}
+
+  /* Известия - card вместо flex */
+  div[style*="display:flex;align-items:flex-start;gap:14px"]{flex-wrap:wrap!important}
+
+  /* Клиенти - avatar по-малък */
+  div[style*="width:36px;height:36px;border-radius:50%"]{width:30px!important;height:30px!important;font-size:12px!important;flex-shrink:0!important}
+
+  /* Quote items в modal */
+  #quote-items-list > div{grid-template-columns:1fr 80px 50px 65px 65px 24px!important}
+
+  /* Calendar mini cells */
+  div[style*="min-height:90px"]{min-height:60px!important}
+
+  /* Greeting banner */
+  div[style*="linear-gradient(135deg,var(--accent)"]{padding:14px 16px!important}
+
+  /* Quick date buttons */
+  .quick-dates{gap:4px}
+  .quick-date-btn{font-size:10px;padding:3px 8px}
+
+  /* Финанси - 5 колони → 2х3 */
+  .fin-stats-grid{grid-template-columns:1fr 1fr!important}
+
+  /* Отчети grid */
+  .report-grid{display:flex!important;flex-direction:column!important;gap:12px!important}
+
+  /* Продукти view toggle */
+  div[style*="display:flex;gap:3px;background:var(--bg)"]{flex-wrap:wrap}
+
+  /* Наеми return items */
+  div[style*="display:flex;gap:8px;align-items:center;padding:10px"]{flex-wrap:wrap!important}
 }
 
 /* Мобилен хедър */
@@ -1448,7 +1500,7 @@ function renderNotifications(el){
       const color=COLORS[n.type]||'var(--accent)';
       const icon=ICONS[n.type]||'🔔';
       const timeAgo=getTimeAgo(n.created_at);
-      return`<div style="display:flex;align-items:flex-start;gap:14px;padding:16px;background:var(--card);border-radius:12px;border:1px solid var(--border);margin-bottom:10px;border-left:4px solid ${color}">
+      return`<div style="display:flex;align-items:flex-start;gap:10px;padding:12px;background:var(--card);border-radius:12px;border:1px solid var(--border);margin-bottom:8px;border-left:4px solid ${color}">
         <div style="font-size:24px;flex-shrink:0">${icon}</div>
         <div style="flex:1">
           <div style="font-weight:700;font-size:14px;color:var(--text);margin-bottom:3px">${n.title}</div>
@@ -1611,7 +1663,7 @@ function renderMovementsPage(el){
   </div>
   <div class="content">
     <div class="table-wrap">
-      <table><thead><tr><th>Дата</th><th>Продукт</th><th>Тип</th><th>Количество</th><th>Бележка</th></tr></thead><tbody>
+      <table><thead><tr><th>Дата</th><th>Продукт</th><th>Тип</th><th>Кол.</th><th>Бележка</th></tr></thead><tbody>
       ${movements.length===0?`<tr><td colspan="5"><div class="empty"><p>Няма движения</p></div></td></tr>`:
         movements.map(m=>{
           const types={in:['badge-green','⬆ Вход'],out:['badge-red','⬇ Изход'],adjust:['badge-yellow','⚖ Корекция']};
@@ -1632,7 +1684,7 @@ function renderRentals(el){
   const statuses={active:'Активен',returned:'Върнат',overdue:'Просрочен',cancelled:'Отказан'};
   const statusBadges={active:'badge-green',returned:'badge-gray',overdue:'badge-red',cancelled:'badge-gray'};
   el.innerHTML=`
-  <div class="topbar"><h2>Наеми</h2>
+  <div class="topbar" style="flex-wrap:wrap"><h2>Наеми</h2>
     <button class="btn btn-primary" onclick="openRentalModal()">+ Нов наем</button>
   </div>
   <div class="content">
@@ -1664,12 +1716,12 @@ function renderRentals(el){
 
 function renderSuppliers(el){
   el.innerHTML=`
-  <div class="topbar"><h2>Доставчици</h2>
+  <div class="topbar" style="flex-wrap:wrap"><h2>Доставчици</h2>
     <button class="btn btn-primary" onclick="openModal('supplier-modal')">+ Нов доставчик</button>
   </div>
   <div class="content">
     <div class="table-wrap">
-      <table><thead><tr><th>Наименование</th><th>Контакт</th><th>Продукти</th><th>Поръчки</th><th>Рейтинг</th><th>Действия</th></tr></thead><tbody>
+      <table><thead><tr><th>Наименование</th><th>Контакт</th><th>Продукти</th><th>лв</th><th>⭐</th><th>Действия</th></tr></thead><tbody>
       ${suppliers.length===0?`<tr><td colspan="6"><div class="empty"><p>Няма доставчици все още</p></div></td></tr>`:
         suppliers.map(s=>{
           const supplierProducts=products.filter(p=>p.supplier_id===s.id);
@@ -1892,7 +1944,7 @@ function copySupplierEmail(){
 
 function renderCategories(el){
   el.innerHTML=`
-  <div class="topbar"><h2>Категории</h2>
+  <div class="topbar" style="flex-wrap:wrap"><h2>Категории</h2>
     <button class="btn btn-primary" onclick="openModal('category-modal')">+ Нова категория</button>
   </div>
   <div class="content">
@@ -1918,7 +1970,7 @@ function renderReports(el){
   const totalOut=movements.filter(m=>m.type==='out').reduce((s,m)=>s+m.quantity,0);
   const rentalRevenue=rentals.reduce((s,r)=>s+(r.total_price||0),0);
   el.innerHTML=`
-  <div class="topbar"><h2>Отчети</h2>
+  <div class="topbar" style="flex-wrap:wrap"><h2>Отчети</h2>
     <button class="btn btn-secondary" onclick="exportCSV()">⬇ Експорт CSV</button>
   </div>
   <div class="content">
@@ -2417,7 +2469,7 @@ function renderFinances(el){
   <div class="content">
 
     <!-- 5 ключови числа -->
-    <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:20px">
+    <div class="fin-stats-grid" style="display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:20px">
       <div class="stat-card good">
         <div class="label">Приходи общо</div>
         <div class="value">${totalRevenue.toFixed(0)} лв</div>
@@ -2905,7 +2957,7 @@ function renderClients(el){
   <div class="content">
     <div class="table-wrap">
       <table><thead><tr>
-        <th>Клиент</th><th>Телефон</th><th>Контакт</th><th>Намерил ни</th><th>Оферти</th><th>Рейтинг</th><th>Действия</th>
+        <th>Клиент</th><th>Телефон</th><th>Намерил</th><th>Оферти</th><th>⭐</th><th>Действия</th>
       </tr></thead><tbody>
       ${clients.length===0?`<tr><td colspan="7"><div class="empty"><p>Няма клиенти все още</p></div></td></tr>`:
         clients.map(c=>{
@@ -2914,18 +2966,17 @@ function renderClients(el){
           return`<tr>
             <td>
               <div style="display:flex;align-items:center;gap:8px">
-                <div style="width:36px;height:36px;border-radius:50%;background:var(--accent-bg);display:flex;align-items:center;justify-content:center;font-weight:700;color:var(--accent);font-size:14px;flex-shrink:0">${c.name[0]}</div>
+                <div style="width:32px;height:32px;border-radius:50%;background:var(--accent-bg);display:flex;align-items:center;justify-content:center;font-weight:700;color:var(--accent);font-size:13px;flex-shrink:0">${c.name[0]}</div>
                 <div>
-                  <strong>${c.name}</strong>${c.is_vip?` <span style="background:#fef3c7;color:#d97706;border-radius:5px;padding:1px 5px;font-size:10px;font-weight:700">VIP</span>`:''}
-                  ${c.birthday?`<br><span style="font-size:11px;color:var(--muted)">🎂 ${c.birthday}</span>`:''}
+                  <strong style="font-size:13px">${c.name}</strong>${c.is_vip?` <span style="background:#fef3c7;color:#d97706;border-radius:5px;padding:1px 5px;font-size:9px;font-weight:700">VIP</span>`:''}
+                  ${c.birthday?`<br><span style="font-size:10px;color:var(--muted)">🎂 ${c.birthday}</span>`:''}
                 </div>
               </div>
             </td>
-            <td>${c.phone||'—'}</td>
-            <td style="font-size:12px">${CONTACT[c.preferred_contact]||'—'}</td>
-            <td style="font-size:12px;color:var(--muted)">${c.how_found||'—'}</td>
-            <td><span class="badge badge-blue">${clientQuotes.length} оферти</span></td>
-            <td style="font-size:12px">${stars}</td>
+            <td style="font-size:12px">${c.phone||'—'}</td>
+            <td style="font-size:11px;color:var(--muted)">${c.how_found||'—'}</td>
+            <td><span class="badge badge-blue" style="font-size:10px">${clientQuotes.length}</span></td>
+            <td style="font-size:12px">${'⭐'.repeat(c.rating||5).slice(0,c.rating||5)}</td>
             <td><div class="actions">
               <button class="icon-btn" title="Нова оферта" onclick="openQuoteModalForClient('${c.id}')">📄</button>
               <button class="icon-btn" title="Редактирай" onclick="editClient('${c.id}')">✏️</button>
@@ -3010,7 +3061,7 @@ function renderQuotes(el){
   <div class="content">
     <div class="table-wrap">
       <table><thead><tr>
-        <th>Клиент</th><th>Събитие</th><th>Тип</th><th>Цена</th><th>Депозит</th><th>Статус</th><th>Действия</th>
+        <th>Клиент</th><th>Дата</th><th>Цена</th><th>Депозит</th><th>Статус</th><th>Действия</th>
       </tr></thead><tbody>
       ${quotes.length===0?`<tr><td colspan="7"><div class="empty"><p>Няма оферти все още</p></div></td></tr>`:
         quotes.map(q=>{
@@ -3018,14 +3069,13 @@ function renderQuotes(el){
           const itemCount=(q.quote_items||[]).length;
           return`<tr>
             <td>
-              <strong>${q.clients?.name||'—'}</strong>
-              ${q.clients?.phone?`<br><span style="font-size:11px;color:var(--muted)">${q.clients.phone}</span>`:''}
+              <strong style="font-size:13px">${q.clients?.name||'—'}</strong>
+              <br><span style="font-size:10px;color:var(--muted)">${q.event_type||''}</span>
             </td>
-            <td style="font-size:12px">${q.event_date||'—'}${q.event_time?'<br>'+q.event_time:''}</td>
-            <td style="font-size:12px;color:var(--muted)">${q.event_type||'—'}</td>
-            <td style="font-weight:700">${q.total_price>0?q.total_price.toFixed(2)+' лв':'—'}</td>
-            <td>${q.deposit_paid?'<span class="badge badge-green">✅ Платен</span>':(q.deposit_amount>0?`<span class="badge badge-yellow">${q.deposit_amount.toFixed(0)} лв</span>`:'—')}</td>
-            <td><span class="badge ${st.css}">${st.label}</span></td>
+            <td style="font-size:12px;white-space:nowrap">${q.event_date||'—'}${q.event_time?'<br><span style="font-size:10px;color:var(--muted)">'+q.event_time+'</span>':''}</td>
+            <td style="font-weight:700;white-space:nowrap">${q.total_price>0?q.total_price.toFixed(0)+' лв':'—'}</td>
+            <td style="white-space:nowrap">${q.deposit_paid?'<span class="badge badge-green" style="font-size:10px">✅</span>':(q.deposit_amount>0?`<span class="badge badge-yellow" style="font-size:10px">${q.deposit_amount.toFixed(0)}лв</span>`:'—')}</td>
+            <td><span class="badge ${st.css}" style="font-size:10px;white-space:nowrap">${st.label}</span></td>
             <td><div class="actions">
               <button class="icon-btn" title="Съобщения" onclick="openMessagingModal('${q.id}')">💬</button>
               <button class="icon-btn" title="Смени статус" onclick="changeQuoteStatus('${q.id}','${q.status}')">🔄</button>
