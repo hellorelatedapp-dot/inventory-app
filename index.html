@@ -325,6 +325,9 @@ input[type="date"]:focus,input[type="time"]:focus{
     <div class="nav-item" onclick="showPage('products')" id="nav-products">
       <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>Продукти
     </div>
+    <div class="nav-item" onclick="showPage('themes')" id="nav-themes">
+      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/></svg>Теми
+    </div>
     <div class="nav-item" onclick="showPage('movements')" id="nav-movements">
       <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16V4m0 0L3 8m4-4l4 4M17 8v12m0 0l4-4m-4 4l-4-4"/></svg>Движения
     </div>
@@ -1021,6 +1024,69 @@ input[type="date"]:focus,input[type="time"]:focus{
   </div>
 </div>
 
+<!-- THEME MODAL -->
+<div class="overlay" id="theme-modal">
+  <div class="modal" style="width:600px">
+    <div class="modal-hdr">
+      <h3 id="th-modal-title">Нова тема</h3>
+      <button class="close-btn" onclick="closeModal('theme-modal')">×</button>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Наименование *</label>
+        <input type="text" id="th-name" placeholder="Напр. Принцеса Роза">
+      </div>
+      <div class="form-group">
+        <label>Тип събитие</label>
+        <select id="th-event-type">
+          <option value="">— Всякакви —</option>
+          <option>Рожден ден</option><option>Кръщене</option>
+          <option>Сватба</option><option>Корпоративно</option>
+          <option>Абитуриентски</option><option>Друго</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-group">
+      <label>Описание</label>
+      <textarea id="th-description" rows="2" placeholder="Кратко описание на темата..."></textarea>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Тагове (разделени с запетая)</label>
+        <input type="text" id="th-tags" placeholder="принцеса, розово, момиче">
+      </div>
+      <div class="form-group">
+        <label>URL на снимка</label>
+        <input type="url" id="th-image-url" placeholder="https://...">
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Мин. гости</label>
+        <input type="number" id="th-min-guests" value="20" min="1">
+      </div>
+      <div class="form-group">
+        <label>Макс. гости</label>
+        <input type="number" id="th-max-guests" value="50" min="1">
+      </div>
+    </div>
+    <div style="margin:12px 0 6px;font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px">Артикули в темата</div>
+    <div style="display:grid;grid-template-columns:1fr 60px 80px 80px 24px;gap:6px;margin-bottom:4px">
+      <div style="font-size:10px;color:var(--muted);font-weight:700;text-transform:uppercase">Артикул</div>
+      <div style="font-size:10px;color:var(--muted);font-weight:700;text-transform:uppercase;text-align:center">Бр</div>
+      <div style="font-size:10px;color:var(--muted);font-weight:700;text-transform:uppercase;text-align:center">Цена лв</div>
+      <div style="font-size:10px;color:var(--muted);font-weight:700;text-transform:uppercase">Раздел</div>
+      <div></div>
+    </div>
+    <div id="th-items-list"></div>
+    <button class="btn btn-secondary btn-sm" style="margin-top:6px" onclick="addThemeItemRow()">+ Добави артикул</button>
+    <div class="form-actions">
+      <button class="btn btn-secondary" onclick="closeModal('theme-modal')">Отказ</button>
+      <button class="btn btn-primary" onclick="saveTheme()">Запази темата</button>
+    </div>
+  </div>
+</div>
+
 <!-- MOBILE BOTTOM NAVIGATION -->
 <nav class="mobile-nav" id="mobile-nav">
   <div class="mobile-nav-item active" onclick="showPage('dashboard')" id="mnav-dashboard">
@@ -1053,7 +1119,7 @@ input[type="date"]:focus,input[type="time"]:focus{
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
       ${[
         ['clients','👤','Клиенти'],['rentals','📅','Наеми'],
-        ['movements','↕','Движения'],['suppliers','🏢','Доставчици'],
+        ['themes','🎀','Теми'],['movements','↕','Движения'],['suppliers','🏢','Доставчици'],
         ['finances','💰','Финанси'],['reports','📊','Отчети'],
         ['categories','🏷','Категории'],['notifications','🔔','Известия']
       ].map(([page,icon,label])=>`
@@ -1083,7 +1149,7 @@ const SUPABASE_KEY='sb_publishable_4VSnFfBqyw2uS3zZOO9H3g_gsQCZlVE';
 const {createClient}=supabase;
 const db=createClient(SUPABASE_URL,SUPABASE_KEY);
 
-let products=[],categories=[],movements=[],suppliers=[],locations=[],rentals=[],clients=[],quotes=[],events=[],expenses=[],notifications=[];
+let products=[],categories=[],movements=[],suppliers=[],locations=[],rentals=[],clients=[],quotes=[],events=[],expenses=[],notifications=[],themes=[];
 let quoteItemRows=[];
 let editingProductId=null,editingClientId=null,editingQuoteId=null;
 let selectedMovType='in',currentPage='dashboard',searchQuery='';
@@ -1111,7 +1177,7 @@ function setTheme(t){
 
 async function init(){
   try{
-    await Promise.all([loadCategories(),loadProducts(),loadMovements(),loadSuppliers(),loadLocations(),loadRentals(),loadClients(),loadQuotes(),loadEvents(),loadExpenses(),loadNotifications()]);
+    await Promise.all([loadCategories(),loadProducts(),loadMovements(),loadSuppliers(),loadLocations(),loadRentals(),loadClients(),loadQuotes(),loadEvents(),loadExpenses(),loadNotifications(),loadThemes()]);
     await runSmartChecks();
   }catch(err){
     console.error('Init error:',err);
@@ -1136,6 +1202,7 @@ async function loadClients(){const{data}=await db.from('clients').select('*').or
 async function loadQuotes(){const{data}=await db.from('quotes').select('*,clients(name,phone),quote_items(*)').order('created_at',{ascending:false});quotes=data||[];}
 async function loadEvents(){const{data}=await db.from('events').select('*,clients(name,phone)').order('date');events=data||[];}
 async function loadExpenses(){const{data}=await db.from('expenses').select('*,suppliers(name)').order('date',{ascending:false});expenses=data||[];}
+async function loadThemes(){const{data}=await db.from('themes').select('*,theme_items(*)').order('name');themes=data||[];}
 
 function showPage(page){
   currentPage=page;
@@ -1153,6 +1220,7 @@ function showPage(page){
   el.scrollTop=0;
   if(page==='dashboard')renderDashboard(el);
   else if(page==='products')renderProducts(el);
+  else if(page==='themes')renderThemes(el);
   else if(page==='movements')renderMovementsPage(el);
   else if(page==='rentals')renderRentals(el);
   else if(page==='suppliers')renderSuppliers(el);
@@ -1607,6 +1675,38 @@ function renderDashboard(el){
       <div class="stat-card ${outOfStock>0?'danger':'good'}"><div class="label">Изчерпани</div><div class="value">${outOfStock}</div><div class="sub">нулево количество</div></div>
       <div class="stat-card"><div class="label">Активни наеми</div><div class="value">${activeRentals}</div><div class="sub">${todayMov} движения днес</div></div>
     </div>
+
+    <!-- ОФЕРТИ + ТЕМИ БЪРЗИ КАРТИ -->
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:10px;margin-bottom:16px">
+      ${(()=>{
+        const pending=quotes.filter(q=>q.status==='sent'||q.status==='seen').length;
+        const accepted=quotes.filter(q=>q.status==='accepted'||q.status==='deposit_paid').length;
+        const thisMonth=new Date().toISOString().slice(0,7);
+        const monthRevenue=quotes.filter(q=>q.event_date?.startsWith(thisMonth)&&(q.status==='accepted'||q.status==='deposit_paid')).reduce((s,q)=>s+(q.total_price||0),0);
+        const themesCount=themes.length;
+        return`
+        <div class="stat-card" style="cursor:pointer" onclick="showPage('quotes');quoteFilter='sent'">
+          <div class="label">Оферти чакащи</div>
+          <div class="value" style="color:${pending>0?'#c4852a':'var(--text)'}">${pending}</div>
+          <div class="sub">📤 изпратени</div>
+        </div>
+        <div class="stat-card good" style="cursor:pointer" onclick="showPage('quotes');quoteFilter='accepted'">
+          <div class="label">Приети оферти</div>
+          <div class="value">${accepted}</div>
+          <div class="sub">✅ потвърдени</div>
+        </div>
+        <div class="stat-card good">
+          <div class="label">Приход месеца</div>
+          <div class="value" style="font-size:18px">${monthRevenue>0?monthRevenue.toFixed(0)+' лв':'—'}</div>
+          <div class="sub">💰 ${thisMonth}</div>
+        </div>
+        <div class="stat-card" style="cursor:pointer" onclick="showPage('themes')">
+          <div class="label">Теми</div>
+          <div class="value">${themesCount}</div>
+          <div class="sub">🎀 декорации</div>
+        </div>`;
+      })()}
+    </div>
     <div class="dash-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
       <div class="table-wrap">
         <div class="table-header"><h3>⚠️ Ниски наличности</h3></div>
@@ -1651,6 +1751,42 @@ function renderDashboard(el){
           </div>`;}).join('')||'<div class="empty"><p>Няма движения все още</p></div>'}
       </div>
     </div>
+
+    <!-- ПРЕДСТОЯЩИ ОФЕРТИ -->
+    ${(()=>{
+      const upcoming=quotes
+        .filter(q=>q.event_date&&q.event_date>=today&&(q.status==='accepted'||q.status==='deposit_paid'))
+        .sort((a,b)=>a.event_date.localeCompare(b.event_date))
+        .slice(0,5);
+      if(!upcoming.length)return'';
+      return`<div class="table-wrap" style="margin-top:16px">
+        <div class="table-header">
+          <h3>🎉 Предстоящи потвърдени събитияа</h3>
+          <button class="btn btn-secondary btn-sm" onclick="showPage('quotes')">Всички →</button>
+        </div>
+        <table><thead><tr><th>Клиент</th><th>Събитие</th><th>Дата</th><th>Цена</th><th>Депозит</th><th></th></tr></thead><tbody>
+        ${upcoming.map(q=>{
+          const daysLeft=Math.ceil((new Date(q.event_date)-new Date())/(1000*60*60*24));
+          return`<tr>
+            <td><strong>${q.clients?.name||'—'}</strong></td>
+            <td style="font-size:12px;color:var(--muted)">${q.event_type||'—'}</td>
+            <td>
+              <div style="font-size:13px;font-weight:600">${q.event_date}</div>
+              <div style="font-size:10px;color:${daysLeft<=3?'#e05555':'var(--muted)'};font-weight:600">
+                ${daysLeft===0?'ДНЕС! 🔥':daysLeft===1?'УТРЕ!':daysLeft+'д'}
+              </div>
+            </td>
+            <td style="font-weight:700">${q.total_price>0?q.total_price.toFixed(0)+' лв':'—'}</td>
+            <td>${q.deposit_paid?'<span class="badge badge-green" style="font-size:10px">✅</span>':q.deposit_amount>0?`<span class="badge badge-yellow" style="font-size:10px">⏳ ${q.deposit_amount.toFixed(0)} лв</span>`:'—'}</td>
+            <td>
+              <button class="btn btn-secondary btn-sm" onclick="openMessagingModal('${q.id}')">💬</button>
+              <button class="btn btn-secondary btn-sm" onclick="generatePackingList('${q.id}')">📦</button>
+            </td>
+          </tr>`;
+        }).join('')}
+        </tbody></table>
+      </div>`;
+    })()}
   </div>`;
 
   // Зареди времето асинхронно
@@ -2948,42 +3084,87 @@ async function deleteEvent(id){
 
 // ═══ CLIENTS ══════════════════════════════════════════════
 function renderClients(el){
-  const CONTACT={phone:'📞 Телефон',whatsapp:'💬 WhatsApp',viber:'📱 Viber',email:'📧 Имейл'};
+  const CONTACT={phone:'📞',whatsapp:'💬',viber:'📱',email:'📧'};
+  const q=searchQuery.toLowerCase();
+  const filtered=clients.filter(c=>!q||c.name.toLowerCase().includes(q)||(c.phone||'').includes(q));
+  const today=new Date().toISOString().slice(0,10);
+
   el.innerHTML=`
   <div class="topbar">
     <h2>Клиенти <span style="font-size:13px;color:var(--muted);font-weight:400">${clients.length}</span></h2>
+    <div class="search-wrap">
+      <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+      <input placeholder="Търси клиент..." oninput="searchQuery=this.value;renderClients(document.getElementById('page-content'))" value="${searchQuery}">
+    </div>
     <button class="btn btn-primary" onclick="openClientModal()">+ Нов клиент</button>
   </div>
   <div class="content">
-    <div class="table-wrap">
-      <table><thead><tr>
-        <th>Клиент</th><th>Телефон</th><th>Намерил</th><th>Оферти</th><th>⭐</th><th>Действия</th>
-      </tr></thead><tbody>
-      ${clients.length===0?`<tr><td colspan="7"><div class="empty"><p>Няма клиенти все още</p></div></td></tr>`:
-        clients.map(c=>{
-          const clientQuotes=quotes.filter(q=>q.client_id===c.id);
-          const stars='⭐'.repeat(c.rating||5);
-          return`<tr>
-            <td>
-              <div style="display:flex;align-items:center;gap:8px">
-                <div style="width:32px;height:32px;border-radius:50%;background:var(--accent-bg);display:flex;align-items:center;justify-content:center;font-weight:700;color:var(--accent);font-size:13px;flex-shrink:0">${c.name[0]}</div>
-                <div>
-                  <strong style="font-size:13px">${c.name}</strong>${c.is_vip?` <span style="background:#fef3c7;color:#d97706;border-radius:5px;padding:1px 5px;font-size:9px;font-weight:700">VIP</span>`:''}
-                  ${c.birthday?`<br><span style="font-size:10px;color:var(--muted)">🎂 ${c.birthday}</span>`:''}
-                </div>
+    ${filtered.length===0?`<div class="empty"><div style="font-size:48px;margin-bottom:12px">👤</div><p>Няма клиенти</p></div>`:''}
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:12px">
+      ${filtered.map(c=>{
+        const clientQuotes=quotes.filter(q=>q.client_id===c.id);
+        const totalSpent=clientQuotes.filter(q=>q.status==='deposit_paid'||q.status==='accepted').reduce((s,q)=>s+(q.total_price||0),0);
+        const lastQuote=clientQuotes.sort((a,b)=>new Date(b.created_at)-new Date(a.created_at))[0];
+        const daysAgo=lastQuote?Math.floor((new Date()-new Date(lastQuote.created_at))/(1000*60*60*24)):null;
+        const inactive=daysAgo!==null&&daysAgo>120;
+
+        // Рожден ден
+        let bdayBadge='';
+        if(c.birthday){
+          const bdayMD=c.birthday.slice(5);
+          const todayMD=today.slice(5);
+          const tomorrow=new Date(new Date().getTime()+86400000).toISOString().slice(5,10);
+          if(bdayMD===todayMD) bdayBadge='<span style="background:#fde8ed;color:#c4546d;border-radius:5px;padding:1px 6px;font-size:10px;font-weight:700">🎂 ДНЕС!</span>';
+          else if(bdayMD===tomorrow) bdayBadge='<span style="background:#fdf3e8;color:#c4852a;border-radius:5px;padding:1px 6px;font-size:10px;font-weight:700">🎂 УТРЕ</span>';
+        }
+
+        const ratingColor=c.rating>=4?'#3d8a5a':c.rating>=3?'#c4852a':'#e05555';
+        const initials=c.name.split(' ').map(n=>n[0]).join('').slice(0,2).toUpperCase();
+        const contactIcon=CONTACT[c.preferred_contact||'phone']||'📞';
+
+        return`<div style="background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px;transition:.15s;${inactive?'border-left:3px solid #c4852a':''}"
+          onmouseover="this.style.boxShadow='0 4px 16px rgba(0,0,0,.08)'" onmouseout="this.style.boxShadow=''">
+          <div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:10px">
+            <div style="width:42px;height:42px;border-radius:50%;background:var(--accent-bg);display:flex;align-items:center;justify-content:center;font-weight:800;color:var(--accent);font-size:15px;flex-shrink:0">${initials}</div>
+            <div style="flex:1;min-width:0">
+              <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+                <strong style="font-size:14px">${c.name}</strong>
+                ${c.is_vip?'<span style="background:#fef3c7;color:#d97706;border-radius:5px;padding:1px 5px;font-size:9px;font-weight:700">VIP</span>':''}
+                ${bdayBadge}
               </div>
-            </td>
-            <td style="font-size:12px">${c.phone||'—'}</td>
-            <td style="font-size:11px;color:var(--muted)">${c.how_found||'—'}</td>
-            <td><span class="badge badge-blue" style="font-size:10px">${clientQuotes.length}</span></td>
-            <td style="font-size:12px">${'⭐'.repeat(c.rating||5).slice(0,c.rating||5)}</td>
-            <td><div class="actions">
-              <button class="icon-btn" title="Нова оферта" onclick="openQuoteModalForClient('${c.id}')">📄</button>
-              <button class="icon-btn" title="Редактирай" onclick="editClient('${c.id}')">✏️</button>
-              <button class="icon-btn danger" title="Изтрий" onclick="deleteClient('${c.id}')">🗑</button>
-            </div></td>
-          </tr>`;}).join('')}
-      </tbody></table>
+              <div style="font-size:12px;color:var(--muted);margin-top:2px;display:flex;align-items:center;gap:6px">
+                ${contactIcon} ${c.phone||c.email||'Няма контакт'}
+                ${c.how_found?`· <span style="font-size:10px">${c.how_found}</span>`:''}
+              </div>
+            </div>
+            <div style="font-size:10px;color:var(--muted);text-align:right;flex-shrink:0">
+              ${'⭐'.repeat(c.rating||5).slice(0,c.rating||5)}
+            </div>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:10px">
+            <div style="text-align:center;background:var(--bg);border-radius:8px;padding:8px 4px">
+              <div style="font-size:16px;font-weight:800;color:var(--accent)">${clientQuotes.length}</div>
+              <div style="font-size:9px;color:var(--muted);font-weight:600;text-transform:uppercase">Оферти</div>
+            </div>
+            <div style="text-align:center;background:var(--bg);border-radius:8px;padding:8px 4px">
+              <div style="font-size:13px;font-weight:800;color:#3d8a5a">${totalSpent>0?totalSpent.toFixed(0)+' лв':'—'}</div>
+              <div style="font-size:9px;color:var(--muted);font-weight:600;text-transform:uppercase">Похарчено</div>
+            </div>
+            <div style="text-align:center;background:var(--bg);border-radius:8px;padding:8px 4px">
+              <div style="font-size:13px;font-weight:800;color:${inactive?'#c4852a':'var(--text)'}">${daysAgo!==null?daysAgo+'д':'нов'}</div>
+              <div style="font-size:9px;color:var(--muted);font-weight:600;text-transform:uppercase">Послед.</div>
+            </div>
+          </div>
+          ${c.notes?`<div style="font-size:11px;color:var(--muted);background:var(--bg);border-radius:7px;padding:6px 8px;margin-bottom:8px;line-height:1.4">${c.notes}</div>`:''}
+          <div style="display:flex;gap:5px;flex-wrap:wrap">
+            <button class="btn btn-primary btn-sm" style="flex:1;font-size:11px" onclick="openQuoteModalForClient('${c.id}')">📄 Нова оферта</button>
+            ${c.phone?`<button class="btn btn-secondary btn-sm" onclick="window.open('https://wa.me/${(c.phone||'').replace(/\D/g,'')}','_blank')" title="WhatsApp">💬</button>`:''}
+            ${c.phone?`<button class="btn btn-secondary btn-sm" onclick="window.open('tel:${c.phone}')" title="Обади се">📞</button>`:''}
+            <button class="icon-btn" title="Редактирай" onclick="editClient('${c.id}')">✏️</button>
+            <button class="icon-btn danger" title="Изтрий" onclick="deleteClient('${c.id}')">🗑</button>
+          </div>
+        </div>`;
+      }).join('')}
     </div>
   </div>`;
 }
@@ -3052,41 +3233,80 @@ async function deleteClient(id){
 // ═══ QUOTES ════════════════════════════════════════════════
 // QUOTE_STATUS е дефиниран глобално в началото
 
+let quoteFilter='all';
 function renderQuotes(el){
+  const q=searchQuery.toLowerCase();
+  let filtered=quotes.filter(x=>!q||(x.clients?.name||'').toLowerCase().includes(q)||(x.event_type||'').toLowerCase().includes(q));
+  if(quoteFilter!=='all') filtered=filtered.filter(x=>x.status===quoteFilter);
+
+  const counts={};
+  Object.keys(QUOTE_STATUS).forEach(k=>counts[k]=quotes.filter(x=>x.status===k).length);
+
   el.innerHTML=`
   <div class="topbar">
     <h2>Оферти <span style="font-size:13px;color:var(--muted);font-weight:400">${quotes.length}</span></h2>
+    <div class="search-wrap">
+      <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+      <input placeholder="Търси оферта..." oninput="searchQuery=this.value;renderQuotes(document.getElementById('page-content'))" value="${searchQuery}">
+    </div>
     <button class="btn btn-primary" onclick="openQuoteModal()">+ Нова оферта</button>
   </div>
   <div class="content">
-    <div class="table-wrap">
-      <table><thead><tr>
-        <th>Клиент</th><th>Дата</th><th>Цена</th><th>Депозит</th><th>Статус</th><th>Действия</th>
-      </tr></thead><tbody>
-      ${quotes.length===0?`<tr><td colspan="7"><div class="empty"><p>Няма оферти все още</p></div></td></tr>`:
-        quotes.map(q=>{
-          const st=QUOTE_STATUS[q.status]||QUOTE_STATUS.draft;
-          const itemCount=(q.quote_items||[]).length;
-          return`<tr>
-            <td>
-              <strong style="font-size:13px">${q.clients?.name||'—'}</strong>
-              <br><span style="font-size:10px;color:var(--muted)">${q.event_type||''}</span>
-            </td>
-            <td style="font-size:12px;white-space:nowrap">${q.event_date||'—'}${q.event_time?'<br><span style="font-size:10px;color:var(--muted)">'+q.event_time+'</span>':''}</td>
-            <td style="font-weight:700;white-space:nowrap">${q.total_price>0?q.total_price.toFixed(0)+' лв':'—'}</td>
-            <td style="white-space:nowrap">${q.deposit_paid?'<span class="badge badge-green" style="font-size:10px">✅</span>':(q.deposit_amount>0?`<span class="badge badge-yellow" style="font-size:10px">${q.deposit_amount.toFixed(0)}лв</span>`:'—')}</td>
-            <td><span class="badge ${st.css}" style="font-size:10px;white-space:nowrap">${st.label}</span></td>
-            <td><div class="actions">
-              <button class="icon-btn" title="Съобщения" onclick="openMessagingModal('${q.id}')">💬</button>
-              <button class="icon-btn" title="Смени статус" onclick="changeQuoteStatus('${q.id}','${q.status}')">🔄</button>
-              <button class="icon-btn" title="Договор" onclick="generateContract('${q.id}')">📃</button>
-              <button class="icon-btn" title="PDF оферта" onclick="generateQuotePDF('${q.id}')">📄</button>
-              <button class="icon-btn" title="Пакинг лист" onclick="generatePackingList('${q.id}')">📦</button>
+    <div class="section-tabs" style="width:100%;margin-bottom:16px">
+      <div class="section-tab ${quoteFilter==='all'?'active':''}" onclick="quoteFilter='all';renderQuotes(document.getElementById('page-content'))">
+        Всички <span style="opacity:.6">${quotes.length}</span>
+      </div>
+      ${Object.entries(QUOTE_STATUS).map(([k,s])=>counts[k]>0?`
+        <div class="section-tab ${quoteFilter===k?'active':''}" onclick="quoteFilter='${k}';renderQuotes(document.getElementById('page-content'))">
+          ${s.label} <span style="opacity:.6">${counts[k]}</span>
+        </div>`:''
+      ).join('')}
+    </div>
+    ${filtered.length===0?`<div class="empty"><div style="font-size:48px;margin-bottom:12px">📄</div><p>Няма оферти в тази категория</p></div>`:''}
+    <div style="display:flex;flex-direction:column;gap:8px">
+      ${filtered.map(q=>{
+        const st=QUOTE_STATUS[q.status]||QUOTE_STATUS.draft;
+        const items=q.quote_items||[];
+        const totalItems=items.length;
+        const daysToEvent=q.event_date?Math.ceil((new Date(q.event_date)-new Date())/(1000*60*60*24)):null;
+        const urgent=daysToEvent!==null&&daysToEvent<=7&&daysToEvent>=0;
+
+        return`<div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px 16px;${urgent?'border-left:4px solid #e05555':''};transition:.15s"
+          onmouseover="this.style.boxShadow='0 2px 12px rgba(0,0,0,.07)'" onmouseout="this.style.boxShadow=''">
+          <div style="display:flex;align-items:flex-start;gap:10px;flex-wrap:wrap">
+            <div style="flex:1;min-width:200px">
+              <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;flex-wrap:wrap">
+                <strong style="font-size:14px">${q.clients?.name||'—'}</strong>
+                <span class="badge ${st.css}" style="font-size:10px">${st.label}</span>
+                ${urgent?`<span style="background:#fdf0f0;color:#e05555;border-radius:5px;padding:1px 6px;font-size:10px;font-weight:700">⚡ ${daysToEvent===0?'ДНЕС':daysToEvent+'д'}</span>`:''}
+              </div>
+              <div style="font-size:12px;color:var(--muted);display:flex;gap:10px;flex-wrap:wrap">
+                <span>📅 ${q.event_date||'—'} ${q.event_time?'· '+q.event_time:''}</span>
+                ${q.event_type?`<span>🎉 ${q.event_type}</span>`:''}
+                ${q.address?`<span>📍 ${q.address}</span>`:''}
+                ${totalItems>0?`<span>📦 ${totalItems} арт.</span>`:''}
+              </div>
+            </div>
+            <div style="text-align:right;flex-shrink:0">
+              <div style="font-size:20px;font-weight:800;color:var(--text)">${q.total_price>0?q.total_price.toFixed(0)+' лв':'—'}</div>
+              <div style="font-size:11px;color:var(--muted)">
+                ${q.deposit_amount>0?(q.deposit_paid?`<span style="color:#3d8a5a;font-weight:600">✅ депозит платен</span>`:`⏳ депозит ${q.deposit_amount.toFixed(0)} лв`):''}
+              </div>
+            </div>
+          </div>
+          <div style="display:flex;gap:5px;margin-top:10px;flex-wrap:wrap;align-items:center">
+            <button class="btn btn-secondary btn-sm" onclick="openMessagingModal('${q.id}')">💬 Съобщение</button>
+            <button class="btn btn-secondary btn-sm" onclick="changeQuoteStatus('${q.id}','${q.status}')">🔄 Смени статус</button>
+            <button class="btn btn-secondary btn-sm" onclick="generateQuotePDF('${q.id}')">📄 PDF</button>
+            <button class="btn btn-secondary btn-sm" onclick="generatePackingList('${q.id}')">📦 Пакинг</button>
+            <button class="btn btn-secondary btn-sm" onclick="generateContract('${q.id}')">📃 Договор</button>
+            <div style="margin-left:auto;display:flex;gap:4px">
               <button class="icon-btn" title="Редактирай" onclick="editQuote('${q.id}')">✏️</button>
               <button class="icon-btn danger" title="Изтрий" onclick="deleteQuote('${q.id}')">🗑</button>
-            </div></td>
-          </tr>`;}).join('')}
-      </tbody></table>
+            </div>
+          </div>
+        </div>`;
+      }).join('')}
     </div>
   </div>`;
 }
@@ -3150,6 +3370,12 @@ function editQuote(id){
 
 function addQuoteItemRow(){
   quoteItemRows.push({product_id:'',description:'',quantity:1,unit_price:0,cost_price:0,section:'Декорация'});
+  renderQuoteItemRows();
+  updateQuoteSummary();
+}
+
+function addQuoteItemRowWithData(productId,quantity,unitPrice,description){
+  quoteItemRows.push({product_id:productId,description:description||'',quantity:quantity||1,unit_price:unitPrice||0,cost_price:0,section:'Декорация'});
   renderQuoteItemRows();
   updateQuoteSummary();
 }
@@ -3287,33 +3513,55 @@ async function changeQuoteStatus(id,currentStatus){
   const q=quotes.find(x=>x.id===id);
   if(!q)return;
   const options=[
-    {v:'draft',l:'📝 Чернова'},
-    {v:'sent',l:'📤 Изпратена'},
-    {v:'seen',l:'👁️ Видяна'},
-    {v:'accepted',l:'✅ Приета'},
-    {v:'deposit_paid',l:'💰 Депозит платен'},
-    {v:'declined',l:'❌ Отказана'},
-    {v:'expired',l:'⏰ Изтекла'}
+    {v:'draft',l:'📝 Чернова',desc:'Все още се работи'},
+    {v:'sent',l:'📤 Изпратена',desc:'Изпратена до клиента'},
+    {v:'seen',l:'👁️ Видяна',desc:'Клиентът е видял'},
+    {v:'accepted',l:'✅ Приета',desc:'Клиентът е приел'},
+    {v:'deposit_paid',l:'💰 Депозит платен',desc:'Резервацията е официална'},
+    {v:'declined',l:'❌ Отказана',desc:'Клиентът е отказал'},
+    {v:'expired',l:'⏰ Изтекла',desc:'Офертата е изтекла'}
   ];
-  const newStatus=prompt(`Избери нов статус:\n\n${options.map((o,i)=>`${i+1}. ${o.l}`).join('\n')}\n\nВъведи номер (1-7):`,currentStatus);
-  const idx=parseInt(newStatus)-1;
-  if(isNaN(idx)||idx<0||idx>=options.length)return;
-  const status=options[idx].v;
-  await db.from('quotes').update({status,updated_at:new Date().toISOString()}).eq('id',id);
 
-  // При приета оферта — резервирай инвентара
+  // Красив modal за избор
+  let modal=document.getElementById('status-change-modal');
+  if(!modal){modal=document.createElement('div');modal.id='status-change-modal';modal.className='overlay';document.body.appendChild(modal);}
+
+  modal.innerHTML=`
+  <div class="modal" style="width:380px">
+    <div class="modal-hdr">
+      <h3>🔄 Смени статус</h3>
+      <button class="close-btn" onclick="closeModal('status-change-modal')">×</button>
+    </div>
+    <div style="font-size:12px;color:var(--muted);margin-bottom:12px">${q.clients?.name||''} · ${q.event_date||''}</div>
+    <div style="display:flex;flex-direction:column;gap:6px">
+      ${options.map(o=>`
+        <div onclick="applyQuoteStatus('${id}','${o.v}','${currentStatus}')" 
+          style="padding:10px 14px;border-radius:10px;cursor:pointer;border:2px solid ${o.v===currentStatus?'var(--accent)':'var(--border)'};
+          background:${o.v===currentStatus?'var(--accent-bg)':'var(--card)'};transition:.15s"
+          onmouseover="this.style.background='var(--accent-bg)'" onmouseout="this.style.background='${o.v===currentStatus?'var(--accent-bg)':'var(--card)'}'">
+          <div style="font-size:13px;font-weight:700;color:var(--text)">${o.l} ${o.v===currentStatus?'← текущ':''}</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:2px">${o.desc}</div>
+        </div>`).join('')}
+    </div>
+  </div>`;
+  openModal('status-change-modal');
+}
+
+async function applyQuoteStatus(id,status,currentStatus){
+  closeModal('status-change-modal');
+  const q=quotes.find(x=>x.id===id);
+  if(!q)return;
+  await db.from('quotes').update({status,updated_at:new Date().toISOString()}).eq('id',id);
   if(status==='accepted'&&currentStatus!=='accepted'){
     const items=(q.quote_items||[]).filter(i=>i.product_id);
     for(const item of items){
       const p=products.find(x=>x.id===item.product_id);
-      if(p&&p.status==='available'){
-        await db.from('products').update({status:'reserved'}).eq('id',item.product_id);
-      }
+      if(p&&p.status==='available') await db.from('products').update({status:'reserved'}).eq('id',item.product_id);
     }
     await loadProducts();
     showToast('Офертата е приета — инвентарът е резервиран! ✅','success');
   } else {
-    showToast('Статусът е обновен','success');
+    showToast('Статусът е обновен: '+status,'success');
   }
   await loadQuotes();
   await runSmartChecks();
@@ -3677,6 +3925,240 @@ function exportCSV(){
   a.download=`eleya-decor-inventory-${new Date().toISOString().slice(0,10)}.csv`;a.click();
 }
 
+// ═══════════════════════════════════════════════════════════════
+// ТЕМИ — Модул 2
+// ═══════════════════════════════════════════════════════════════
+
+let editingThemeId=null;
+let themeItemRows=[];
+
+function renderThemes(el){
+  const q=searchQuery.toLowerCase();
+  const filtered=themes.filter(t=>!q||t.name.toLowerCase().includes(q)||t.tags?.toLowerCase().includes(q));
+
+  el.innerHTML=`
+  <div class="topbar">
+    <h2>🎀 Теми & Декорации</h2>
+    <div class="search-wrap">
+      <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+      <input placeholder="Търси тема..." oninput="searchQuery=this.value;renderThemes(document.getElementById('page-content'))" value="${searchQuery}">
+    </div>
+    <button class="btn btn-primary" onclick="openThemeModal()">+ Нова тема</button>
+  </div>
+  <div class="content">
+    ${filtered.length===0?`<div class="empty"><div style="font-size:48px;margin-bottom:12px">🎀</div><p>Няма теми все още</p><p style="font-size:12px;margin-top:6px;color:var(--muted)">Създай първата си тема с артикули и цени</p></div>`:''}
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px">
+      ${filtered.map(t=>renderThemeCard(t)).join('')}
+    </div>
+  </div>`;
+}
+
+function renderThemeCard(t){
+  const items=t.theme_items||[];
+  const totalCost=items.reduce((s,i)=>{
+    const p=products.find(pr=>pr.id===i.product_id);
+    return s+(p?(p.cost_price||p.price||0)*i.quantity:0);
+  },0);
+  const totalPrice=items.reduce((s,i)=>s+(i.price||0)*i.quantity,0);
+  const margin=totalPrice>0?Math.round((1-totalCost/totalPrice)*100):0;
+
+  // Наличност
+  let availability='green';
+  let availText='🟢 Готова';
+  for(const item of items){
+    const p=products.find(pr=>pr.id===item.product_id);
+    if(!p){availability='red';availText='🔴 Липсват артикули';break;}
+    if(p.quantity===0){availability='red';availText='🔴 Не може да се изпълни';break;}
+    if(p.quantity<item.quantity){availability='yellow';availText='🟡 Частично налична';}
+  }
+  const availColor=availability==='green'?'#3d8a5a':availability==='yellow'?'#c4852a':'#e05555';
+
+  const tagList=t.tags?t.tags.split(',').map(tg=>`<span style="background:var(--accent-bg);color:var(--accent-dark);border-radius:20px;padding:2px 8px;font-size:10px;font-weight:600">${tg.trim()}</span>`).join(''):'';
+
+  return `
+  <div style="background:var(--card);border:1px solid var(--border);border-radius:14px;overflow:hidden;transition:.15s" 
+       onmouseover="this.style.boxShadow='0 4px 20px rgba(0,0,0,.1)'" onmouseout="this.style.boxShadow=''">
+    ${t.image_url?`<img src="${t.image_url}" style="width:100%;height:160px;object-fit:cover" onerror="this.style.display='none'">`
+    :`<div style="width:100%;height:100px;background:linear-gradient(135deg,var(--accent-bg),var(--accent-light));display:flex;align-items:center;justify-content:center;font-size:40px">🎀</div>`}
+    <div style="padding:14px">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:6px">
+        <div>
+          <div style="font-size:15px;font-weight:700;color:var(--text)">${t.name}</div>
+          ${t.event_type?`<div style="font-size:11px;color:var(--muted);margin-top:1px">${t.event_type}</div>`:''}
+        </div>
+        <span style="background:${availColor}18;color:${availColor};border-radius:20px;padding:3px 9px;font-size:11px;font-weight:600;white-space:nowrap">${availText}</span>
+      </div>
+      ${tagList?`<div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:8px">${tagList}</div>`:''}
+      ${t.description?`<div style="font-size:12px;color:var(--muted);margin-bottom:8px;line-height:1.4">${t.description}</div>`:''}
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:10px">
+        <div style="text-align:center;background:var(--bg);border-radius:8px;padding:8px 4px">
+          <div style="font-size:18px;font-weight:800;color:var(--text)">${items.length}</div>
+          <div style="font-size:10px;color:var(--muted);font-weight:600">АРТИКУЛА</div>
+        </div>
+        <div style="text-align:center;background:var(--bg);border-radius:8px;padding:8px 4px">
+          <div style="font-size:15px;font-weight:800;color:var(--text)">${totalPrice.toFixed(0)} лв</div>
+          <div style="font-size:10px;color:var(--muted);font-weight:600">ЦЕНА</div>
+        </div>
+        <div style="text-align:center;background:var(--bg);border-radius:8px;padding:8px 4px">
+          <div style="font-size:15px;font-weight:800;color:${margin>=30?'#3d8a5a':margin>=15?'#c4852a':'#e05555'}">${margin}%</div>
+          <div style="font-size:10px;color:var(--muted);font-weight:600">МАРЖ</div>
+        </div>
+      </div>
+      ${items.length>0?`
+      <div style="margin-bottom:10px;max-height:80px;overflow-y:auto">
+        ${items.slice(0,3).map(i=>{
+          const p=products.find(pr=>pr.id===i.product_id);
+          const enough=p&&p.quantity>=i.quantity;
+          return `<div style="display:flex;align-items:center;gap:6px;padding:3px 0;font-size:12px">
+            <span style="color:${p?(enough?'#3d8a5a':'#e05555'):'#e05555'}">${p?(enough?'✓':'⚠'):'✗'}</span>
+            <span style="flex:1;color:var(--text)">${p?p.name:'(изтрит артикул)'}</span>
+            <span style="color:var(--muted)">×${i.quantity}</span>
+          </div>`;
+        }).join('')}
+        ${items.length>3?`<div style="font-size:11px;color:var(--muted);padding:2px 0">+ още ${items.length-3} артикула</div>`:''}
+      </div>`:''}
+      <div style="display:flex;gap:6px">
+        <button class="btn btn-primary" style="flex:1;font-size:12px" onclick="createQuoteFromTheme('${t.id}')">
+          🎉 Оферта от тема
+        </button>
+        <button class="btn btn-secondary btn-sm" onclick="openThemeModal('${t.id}')" title="Редактирай">✏️</button>
+        <button class="btn btn-secondary btn-sm" style="color:#e05555" onclick="deleteTheme('${t.id}')" title="Изтрий">🗑</button>
+      </div>
+    </div>
+  </div>`;
+}
+
+function openThemeModal(id=null){
+  editingThemeId=id;
+  themeItemRows=[];
+  const t=id?themes.find(x=>x.id===id):null;
+  document.getElementById('th-modal-title').textContent=id?'Редактирай тема':'Нова тема';
+  document.getElementById('th-name').value=t?.name||'';
+  document.getElementById('th-event-type').value=t?.event_type||'';
+  document.getElementById('th-description').value=t?.description||'';
+  document.getElementById('th-tags').value=t?.tags||'';
+  document.getElementById('th-image-url').value=t?.image_url||'';
+  document.getElementById('th-min-guests').value=t?.min_guests||20;
+  document.getElementById('th-max-guests').value=t?.max_guests||50;
+
+  // Зареди артикулите
+  const itemsList=document.getElementById('th-items-list');
+  itemsList.innerHTML='';
+  if(t?.theme_items?.length){
+    t.theme_items.forEach(i=>addThemeItemRow(i));
+  } else {
+    addThemeItemRow();
+  }
+  openModal('theme-modal');
+}
+
+function addThemeItemRow(existing=null){
+  const rowId='thr-'+Date.now()+Math.random().toString(36).slice(2,5);
+  themeItemRows.push(rowId);
+  const opts=products.map(p=>`<option value="${p.id}" ${existing?.product_id===p.id?'selected':''}>${p.name} (${p.quantity} ${p.unit||'бр'})</option>`).join('');
+  const row=document.createElement('div');
+  row.id=rowId;
+  row.style.cssText='display:grid;grid-template-columns:1fr 60px 80px 80px 24px;gap:6px;margin-bottom:6px;align-items:center';
+  row.innerHTML=`
+    <select style="padding:6px 8px;border:1px solid var(--border);border-radius:7px;font-size:12px;background:var(--card);color:var(--text)">
+      <option value="">— Артикул —</option>${opts}
+    </select>
+    <input type="number" min="1" value="${existing?.quantity||1}" placeholder="Бр" style="padding:6px;border:1px solid var(--border);border-radius:7px;font-size:12px;text-align:center;background:var(--card);color:var(--text)">
+    <input type="number" min="0" step="0.01" value="${existing?.price||0}" placeholder="Цена" style="padding:6px;border:1px solid var(--border);border-radius:7px;font-size:12px;text-align:center;background:var(--card);color:var(--text)">
+    <select style="padding:6px 4px;border:1px solid var(--border);border-radius:7px;font-size:11px;background:var(--card);color:var(--text)">
+      <option value="balloon" ${existing?.section==='balloon'?'selected':''}>🎈 Балони</option>
+      <option value="table" ${existing?.section==='table'?'selected':''}>🪑 Маси</option>
+      <option value="equipment" ${existing?.section==='equipment'?'selected':''}>🔧 Оборудване</option>
+      <option value="other" ${existing?.section==='other'?'selected':''}>📦 Друго</option>
+    </select>
+    <button onclick="document.getElementById('${rowId}').remove();themeItemRows=themeItemRows.filter(r=>r!=='${rowId}')" 
+      style="width:24px;height:24px;border:1px solid #fad0d0;background:#fdf0f0;border-radius:6px;cursor:pointer;color:#e05555;font-size:14px;display:flex;align-items:center;justify-content:center">×</button>`;
+  document.getElementById('th-items-list').appendChild(row);
+}
+
+async function saveTheme(){
+  const name=document.getElementById('th-name').value.trim();
+  if(!name){showToast('Въведи името на темата','error');return;}
+
+  const payload={
+    name,
+    event_type:document.getElementById('th-event-type').value,
+    description:document.getElementById('th-description').value.trim(),
+    tags:document.getElementById('th-tags').value.trim(),
+    image_url:document.getElementById('th-image-url').value.trim(),
+    min_guests:parseInt(document.getElementById('th-min-guests').value)||20,
+    max_guests:parseInt(document.getElementById('th-max-guests').value)||50,
+  };
+
+  let themeId=editingThemeId;
+  if(editingThemeId){
+    await db.from('themes').update(payload).eq('id',editingThemeId);
+  } else {
+    const{data}=await db.from('themes').insert(payload).select().single();
+    themeId=data?.id;
+  }
+
+  if(themeId){
+    // Изтрий старите артикули и вмъкни нови
+    await db.from('theme_items').delete().eq('theme_id',themeId);
+    const rows=document.getElementById('th-items-list').querySelectorAll('div[id^="thr-"]');
+    const itemsToInsert=[];
+    rows.forEach(row=>{
+      const selects=row.querySelectorAll('select');
+      const inputs=row.querySelectorAll('input');
+      const productId=selects[0].value;
+      const qty=parseInt(inputs[0].value)||1;
+      const price=parseFloat(inputs[1].value)||0;
+      const section=selects[1].value;
+      if(productId) itemsToInsert.push({theme_id:themeId,product_id:productId,quantity:qty,price,section});
+    });
+    if(itemsToInsert.length) await db.from('theme_items').insert(itemsToInsert);
+  }
+
+  await loadThemes();
+  closeModal('theme-modal');
+  showToast(editingThemeId?'Темата е обновена!':'Темата е създадена!','success');
+  renderThemes(document.getElementById('page-content'));
+}
+
+async function deleteTheme(id){
+  if(!confirm('Изтрий тази тема?'))return;
+  await db.from('theme_items').delete().eq('theme_id',id);
+  await db.from('themes').delete().eq('id',id);
+  await loadThemes();
+  showToast('Темата е изтрита','success');
+  renderThemes(document.getElementById('page-content'));
+}
+
+function createQuoteFromTheme(themeId){
+  const t=themes.find(x=>x.id===themeId);
+  if(!t)return;
+  // Отвори оферта modal с предзаредени артикули от темата
+  openQuoteModal();
+  setTimeout(()=>{
+    // Изчисти старите редове
+    document.getElementById('quote-items-list').innerHTML='';
+    quoteItemRows=[];
+    // Добави артикулите от темата
+    (t.theme_items||[]).forEach(i=>{
+      const p=products.find(pr=>pr.id===i.product_id);
+      if(p) addQuoteItemRowWithData(p.id,i.quantity,i.price||p.price||0,p.name);
+    });
+    // Постави типа събитие
+    if(t.event_type){
+      const sel=document.getElementById('q-type');
+      if(sel){
+        for(let opt of sel.options){
+          if(opt.value===t.event_type||opt.text===t.event_type){sel.value=opt.value;break;}
+        }
+      }
+    }
+    updateQuoteSummary();
+    showToast(`Темата "${t.name}" е заредена в офертата! 🎉`,'success');
+  },300);
+}
+
+// ═══════════════════════════════════════════════════════════════
 // MODALS
 function openModal(id){document.getElementById(id).classList.add('open');}
 function closeModal(id){document.getElementById(id).classList.remove('open');stopBarcodeScanner();}
