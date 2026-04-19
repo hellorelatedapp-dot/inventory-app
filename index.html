@@ -233,6 +233,13 @@ tr:hover td{background:var(--accent-light)}
     </div>
   </nav>
   <div class="sidebar-bottom">
+    <div onclick="showPage('notifications')" id="nav-notifications" style="display:flex;align-items:center;gap:8px;padding:8px 0;cursor:pointer;margin-bottom:10px">
+      <div style="position:relative;display:inline-flex">
+        <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="color:var(--muted)"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg>
+        <span id="notif-badge" style="display:none;position:absolute;top:-4px;right:-4px;background:#e05555;color:#fff;border-radius:50%;width:14px;height:14px;font-size:9px;font-weight:700;align-items:center;justify-content:center">0</span>
+      </div>
+      <span id="notif-label" style="font-size:12px;color:var(--muted);font-weight:600">Известия</span>
+    </div>
     <div style="font-size:11px;color:var(--muted);margin-bottom:6px">Тема</div>
     <div class="theme-switcher">
       <div class="theme-dot active" style="background:#e8718a" title="Розово" onclick="setTheme('rose')" id="dot-rose"></div>
@@ -839,7 +846,7 @@ const SUPABASE_KEY='sb_publishable_4VSnFfBqyw2uS3zZOO9H3g_gsQCZlVE';
 const {createClient}=supabase;
 const db=createClient(SUPABASE_URL,SUPABASE_KEY);
 
-let products=[],categories=[],movements=[],suppliers=[],locations=[],rentals=[],clients=[],quotes=[],events=[],expenses=[];
+let products=[],categories=[],movements=[],suppliers=[],locations=[],rentals=[],clients=[],quotes=[],events=[],expenses=[],notifications=[];
 let quoteItemRows=[];
 let editingProductId=null,editingClientId=null,editingQuoteId=null;
 let selectedMovType='in',currentPage='dashboard',searchQuery='';
@@ -855,8 +862,15 @@ function setTheme(t){
 (function(){const t=localStorage.getItem('theme')||'rose';setTheme(t);})();
 
 async function init(){
-  await Promise.all([loadCategories(),loadProducts(),loadMovements(),loadSuppliers(),loadLocations(),loadRentals(),loadClients(),loadQuotes(),loadEvents(),loadExpenses()]);
+  await Promise.all([loadCategories(),loadProducts(),loadMovements(),loadSuppliers(),loadLocations(),loadRentals(),loadClients(),loadQuotes(),loadEvents(),loadExpenses(),loadNotifications()]);
+  await runSmartChecks();
   showPage('dashboard');
+}
+
+async function loadNotifications(){
+  const{data}=await db.from('notifications').select('*').eq('is_read',false).order('created_at',{ascending:false}).limit(50);
+  notifications=data||[];
+  updateNotifBadge();
 }
 
 async function loadCategories(){const{data}=await db.from('categories').select('*').order('name');categories=data||[];}
@@ -886,6 +900,157 @@ function showPage(page){
   else if(page==='quotes')renderQuotes(el);
   else if(page==='calendar')renderCalendar(el);
   else if(page==='finances')renderFinances(el);
+  else if(page==='notifications')renderNotifications(el);
+}
+
+// ═══ SMART SYSTEM ══════════════════════════════════════════
+function updateNotifBadge(){
+  const count=notifications.length;
+  const badge=document.getElementById('notif-badge');
+  const label=document.getElementById('notif-label');
+  if(badge){
+    badge.textContent=count>9?'9+':count;
+    badge.style.display=count>0?'inline-flex':'none';
+  }
+  if(label) label.style.color=count>0?'var(--accent)':'var(--muted)';
+}
+
+async function createNotification(type,title,message,linkTo,linkId){
+  // Избягваме дублирани известия за същия ден
+  const todayStr=new Date().toISOString().slice(0,10);
+  const existing=notifications.find(n=>n.type===type&&n.link_id===linkId&&n.created_at?.startsWith(todayStr));
+  if(existing)return;
+  await db.from('notifications').insert({type,title,message,link_to:linkTo,link_id:linkId});
+}
+
+async function runSmartChecks(){
+  const today=new Date();
+  const todayStr=today.toISOString().slice(0,10);
+  const tomorrowStr=new Date(today.getTime()+86400000).toISOString().slice(0,10);
+  const in7=new Date(today.getTime()+7*86400000).toISOString().slice(0,10);
+
+  const checks=[];
+
+  // 1. Рождени дни на клиенти (днес или утре)
+  clients.forEach(c=>{
+    if(!c.birthday)return;
+    const bday=c.birthday.slice(5); // MM-DD
+    const todayMD=todayStr.slice(5);
+    const tomorrowMD=tomorrowStr.slice(5);
+    if(bday===todayMD) checks.push(createNotification('birthday',`🎂 Рожден ден днес!`,`${c.name} има рожден ден днес — чудесен повод за оферта!`,'clients',c.id));
+    else if(bday===tomorrowMD) checks.push(createNotification('birthday',`🎂 Рожден ден утре`,`${c.name} има рожден ден утре`,'clients',c.id));
+  });
+
+  // 2. Оферти изтичащи скоро
+  quotes.filter(q=>q.status==='sent'||q.status==='seen').forEach(q=>{
+    if(!q.valid_until)return;
+    if(q.valid_until===tomorrowStr) checks.push(createNotification('quote_expiring',`⏰ Оферта изтича утре`,`Офертата за ${q.clients?.name||'клиент'} изтича утре — напомни им!`,'quotes',q.id));
+    else if(q.valid_until===todayStr) checks.push(createNotification('quote_expiring',`⏰ Оферта изтича ДНЕС!`,`Офертата за ${q.clients?.name||'клиент'} изтича днес!`,'quotes',q.id));
+  });
+
+  // 3. Депозити чакащи
+  quotes.filter(q=>q.status==='accepted'&&!q.deposit_paid&&q.deposit_due_date).forEach(q=>{
+    if(q.deposit_due_date<=todayStr) checks.push(createNotification('deposit_overdue',`💰 Просрочен депозит!`,`${q.clients?.name||'Клиент'} не е платил депозит от ${q.deposit_due_date}`,'quotes',q.id));
+    else if(q.deposit_due_date===tomorrowStr) checks.push(createNotification('deposit_due',`💰 Депозит дължим утре`,`${q.clients?.name||'Клиент'} трябва да плати депозит утре`,'quotes',q.id));
+  });
+
+  // 4. Предстоящи събития (7 дни)
+  events.filter(e=>e.status==='confirmed'&&e.date>=todayStr&&e.date<=in7).forEach(e=>{
+    const daysLeft=Math.ceil((new Date(e.date)-today)/(1000*60*60*24));
+    if(daysLeft<=2) checks.push(createNotification('event_soon',`🎉 Събитие след ${daysLeft===0?'ДНЕС':daysLeft===1?'1 ден':'2 дни'}!`,`${e.title} — ${e.date}${e.address?' · '+e.address:''}`,'calendar',e.id));
+  });
+
+  // 5. Ниски наличности
+  products.filter(p=>p.quantity<=p.min_quantity&&p.status==='available').forEach(p=>{
+    checks.push(createNotification('low_stock',`📦 Ниска наличност: ${p.name}`,`Имаш ${p.quantity} ${p.unit} — минимумът е ${p.min_quantity} ${p.unit}`,'products',p.id));
+  });
+
+  // 6. Поръчани артикули с минала дата
+  products.filter(p=>p.status==='ordered'&&p.expected_date&&p.expected_date<todayStr).forEach(p=>{
+    checks.push(createNotification('delivery_overdue',`🚚 Закъсняла доставка: ${p.name}`,`Очаквано на ${p.expected_date} — провери с доставчика!`,'products',p.id));
+  });
+
+  // 7. Клиенти без поръчка от 6 месеца
+  const sixMonthsAgo=new Date(today.getTime()-180*86400000).toISOString().slice(0,10);
+  clients.filter(c=>{
+    const clientQuotes=quotes.filter(q=>q.client_id===c.id);
+    if(clientQuotes.length===0)return false;
+    const lastQuote=clientQuotes.sort((a,b)=>new Date(b.created_at)-new Date(a.created_at))[0];
+    return lastQuote.created_at?.slice(0,10)<sixMonthsAgo;
+  }).slice(0,3).forEach(c=>{
+    checks.push(createNotification('client_inactive',`💌 Неактивен клиент: ${c.name}`,`${c.name} не е поръчвал от над 6 месеца — изпрати им съобщение!`,'clients',c.id));
+  });
+
+  await Promise.all(checks);
+  await loadNotifications();
+}
+
+function renderNotifications(el){
+  const ICONS={
+    birthday:'🎂', quote_expiring:'⏰', deposit_overdue:'💰', deposit_due:'💰',
+    event_soon:'🎉', low_stock:'📦', delivery_overdue:'🚚', client_inactive:'💌'
+  };
+  const COLORS={
+    birthday:'#e8718a', quote_expiring:'#c4852a', deposit_overdue:'#e05555',
+    deposit_due:'#c4852a', event_soon:'#3a7bd5', low_stock:'#c4852a',
+    delivery_overdue:'#e05555', client_inactive:'#5a8a6a'
+  };
+
+  el.innerHTML=`
+  <div class="topbar">
+    <h2>Известия ${notifications.length>0?`<span style="font-size:13px;background:#e05555;color:#fff;border-radius:20px;padding:2px 8px;font-weight:700">${notifications.length}</span>`:''}</h2>
+    ${notifications.length>0?`<button class="btn btn-secondary" onclick="markAllRead()">✓ Маркирай всички като прочетени</button>`:''}
+  </div>
+  <div class="content">
+    ${notifications.length===0?`
+    <div style="text-align:center;padding:80px 20px">
+      <div style="font-size:60px;margin-bottom:16px">✅</div>
+      <div style="font-size:16px;font-weight:700;color:var(--text);margin-bottom:6px">Всичко е наред!</div>
+      <div style="font-size:13px;color:var(--muted)">Няма нови известия</div>
+    </div>`:
+    notifications.map(n=>{
+      const color=COLORS[n.type]||'var(--accent)';
+      const icon=ICONS[n.type]||'🔔';
+      const timeAgo=getTimeAgo(n.created_at);
+      return`<div style="display:flex;align-items:flex-start;gap:14px;padding:16px;background:var(--card);border-radius:12px;border:1px solid var(--border);margin-bottom:10px;border-left:4px solid ${color}">
+        <div style="font-size:24px;flex-shrink:0">${icon}</div>
+        <div style="flex:1">
+          <div style="font-weight:700;font-size:14px;color:var(--text);margin-bottom:3px">${n.title}</div>
+          <div style="font-size:13px;color:var(--muted);margin-bottom:6px">${n.message||''}</div>
+          <div style="font-size:11px;color:var(--muted)">${timeAgo}</div>
+        </div>
+        <div style="display:flex;gap:6px;flex-shrink:0">
+          ${n.link_to?`<button class="btn btn-secondary btn-sm" onclick="markRead('${n.id}');showPage('${n.link_to}')">Виж →</button>`:''}
+          <button class="icon-btn" onclick="markRead('${n.id}')" title="Маркирай като прочетено">✓</button>
+        </div>
+      </div>`;}).join('')}
+  </div>`;
+}
+
+function getTimeAgo(dateStr){
+  if(!dateStr)return'';
+  const diff=Date.now()-new Date(dateStr).getTime();
+  const mins=Math.floor(diff/60000);
+  const hours=Math.floor(diff/3600000);
+  const days=Math.floor(diff/86400000);
+  if(mins<1)return'Преди малко';
+  if(mins<60)return`Преди ${mins} мин`;
+  if(hours<24)return`Преди ${hours} ч`;
+  return`Преди ${days} дни`;
+}
+
+async function markRead(id){
+  await db.from('notifications').update({is_read:true}).eq('id',id);
+  notifications=notifications.filter(n=>n.id!==id);
+  updateNotifBadge();
+  if(currentPage==='notifications')renderNotifications(document.getElementById('page-content'));
+}
+
+async function markAllRead(){
+  await db.from('notifications').update({is_read:true}).in('id',notifications.map(n=>n.id));
+  notifications=[];
+  updateNotifBadge();
+  renderNotifications(document.getElementById('page-content'));
 }
 
 function renderDashboard(el){
@@ -2353,17 +2518,47 @@ async function saveQuote(){
   showToast(editingQuoteId?'Офертата е обновена':'Офертата е създадена','success');
   closeModal('quote-modal');
   await loadQuotes();
+  await loadProducts();
+  // Пускаме smart checks след промяна
+  await runSmartChecks();
   showPage(currentPage);
 }
 
 async function changeQuoteStatus(id,currentStatus){
-  const statuses=['draft','sent','seen','accepted','deposit_paid','declined','expired'];
-  const labels={draft:'📝 Чернова',sent:'📤 Изпратена',seen:'👁️ Видяна',accepted:'✅ Приета',deposit_paid:'💰 Депозит платен',declined:'❌ Отказана',expired:'⏰ Изтекла'};
-  const newStatus=prompt(`Нов статус:\n${statuses.map(s=>s+' = '+labels[s]).join('\n')}\n\nВъведи нов статус:`,currentStatus);
-  if(!newStatus||!statuses.includes(newStatus))return;
-  await db.from('quotes').update({status:newStatus,updated_at:new Date().toISOString()}).eq('id',id);
-  showToast('Статусът е обновен','success');
-  await loadQuotes();showPage(currentPage);
+  const q=quotes.find(x=>x.id===id);
+  if(!q)return;
+  const options=[
+    {v:'draft',l:'📝 Чернова'},
+    {v:'sent',l:'📤 Изпратена'},
+    {v:'seen',l:'👁️ Видяна'},
+    {v:'accepted',l:'✅ Приета'},
+    {v:'deposit_paid',l:'💰 Депозит платен'},
+    {v:'declined',l:'❌ Отказана'},
+    {v:'expired',l:'⏰ Изтекла'}
+  ];
+  const newStatus=prompt(`Избери нов статус:\n\n${options.map((o,i)=>`${i+1}. ${o.l}`).join('\n')}\n\nВъведи номер (1-7):`,currentStatus);
+  const idx=parseInt(newStatus)-1;
+  if(isNaN(idx)||idx<0||idx>=options.length)return;
+  const status=options[idx].v;
+  await db.from('quotes').update({status,updated_at:new Date().toISOString()}).eq('id',id);
+
+  // При приета оферта — резервирай инвентара
+  if(status==='accepted'&&currentStatus!=='accepted'){
+    const items=(q.quote_items||[]).filter(i=>i.product_id);
+    for(const item of items){
+      const p=products.find(x=>x.id===item.product_id);
+      if(p&&p.status==='available'){
+        await db.from('products').update({status:'reserved'}).eq('id',item.product_id);
+      }
+    }
+    await loadProducts();
+    showToast('Офертата е приета — инвентарът е резервиран! ✅','success');
+  } else {
+    showToast('Статусът е обновен','success');
+  }
+  await loadQuotes();
+  await runSmartChecks();
+  showPage(currentPage);
 }
 
 async function deleteQuote(id){
