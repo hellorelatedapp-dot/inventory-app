@@ -8066,7 +8066,7 @@ window.render_figureRentals = function(el) {
             '<td><span class="badge '+(overdue?'br':'bg')+'">'+(overdue?'⚠️ Просрочен':'✅ Активен')+'</span></td>'+
             '<td><div style="display:flex;gap:3px">'+
               '<button class="btn btn-success btn-xs" onclick="returnRental(\''+r.id+'\')">↩ Върни</button>'+
-              (r.client_phone?'<button class="icon-btn" onclick="window.open(\'https://wa.me/'+(r.client_phone||'').replace(/\\D/g,\'\')+'\',\'_blank\')" title="WhatsApp">💬</button>':'')+
+              (r.client_phone?'<button class="icon-btn" onclick="window.open(\'https://wa.me/'+( r.client_phone||'').replace(/[^0-9]/g,'')+'\',\'_blank\')" title="WhatsApp">💬</button>':'')+
             '</div></td>'+
           '</tr>';
         }).join('')}
