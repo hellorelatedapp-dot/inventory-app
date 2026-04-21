@@ -7975,3 +7975,639 @@ window.render_reports = function(el) {
 
 console.log('✅ Бакшиши + Мека резервация + Follow-up заредени!');
 </script>
+
+<script>
+'use strict';
+// ════════════════════════════════════════════
+// НАЕМ НА ФИГУРИ
+// ════════════════════════════════════════════
+
+(function addFiguresNav() {
+  var nav = document.getElementById('sidenav');
+  if (!nav) return;
+  var sec = document.createElement('div');
+  sec.className = 'nav-section';
+  sec.textContent = 'Производство';
+  var item1 = document.createElement('div');
+  item1.className = 'nav-item';
+  item1.dataset.page = 'figureRentals';
+  item1.onclick = function(){ go('figureRentals'); };
+  item1.innerHTML = '<svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="14" height="14"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>Наем на фигури';
+  var item2 = document.createElement('div');
+  item2.className = 'nav-item';
+  item2.dataset.page = 'handmade';
+  item2.onclick = function(){ go('handmade'); };
+  item2.innerHTML = '<svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="14" height="14"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/></svg>Handmade';
+  var item3 = document.createElement('div');
+  item3.className = 'nav-item';
+  item3.dataset.page = 'creativeTime';
+  item3.onclick = function(){ go('creativeTime'); };
+  item3.innerHTML = '<svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="14" height="14"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364-6.364l-.707.707M6.343 17.657l-.707.707M17.657 17.657l-.707-.707M6.343 6.343l-.707-.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"/></svg>Creative Time';
+  nav.appendChild(sec);
+  nav.appendChild(item1);
+  nav.appendChild(item2);
+  nav.appendChild(item3);
+  PAGE_TITLES['figureRentals'] = 'Наем на фигури';
+  PAGE_TITLES['handmade']      = 'Handmade Studio';
+  PAGE_TITLES['creativeTime']  = 'Creative Time';
+})();
+
+// ── Наем на фигури страница ───────────────────────────────────
+window.render_figureRentals = function(el) {
+  var figures = S.products.filter(function(p){
+    return p.product_type === 'rental' || (p.notes && p.notes.toLowerCase().includes('фигур'));
+  });
+  var allRentable = S.products.filter(function(p){ return p.is_rentable || p.rental_price > 0; });
+
+  el.innerHTML = `
+  <div class="topbar">
+    <h2>🎭 Наем на фигури <span style="font-size:13px;color:var(--ink-m);font-weight:400">${allRentable.length} налични</span></h2>
+    <button class="btn btn-secondary btn-sm" onclick="openProductModal()">+ Добави фигура</button>
+    <button class="btn btn-primary" onclick="openFigureRentalModal()">+ Нов наем</button>
+  </div>
+  <div class="content">
+
+    <!-- Stat карти -->
+    <div class="stat-grid" style="grid-template-columns:repeat(4,1fr);margin-bottom:16px">
+      <div class="stat-card"><div class="lbl">🎭 Налични фигури</div><div class="val">${allRentable.length}</div><div class="sub">готови за наем</div></div>
+      <div class="stat-card accent"><div class="lbl">🤝 Активни наеми</div><div class="val">${S.rentals.filter(function(r){return r.status==='active';}).length}</div><div class="sub">в момента</div></div>
+      <div class="stat-card good"><div class="lbl">💶 Приход от наеми</div><div class="val">${eur0(S.rentals.reduce(function(s,r){return s+(r.total_price||0);},0))}</div><div class="sub">общо</div></div>
+      <div class="stat-card"><div class="lbl">📊 Средно наема</div><div class="val">${S.rentals.length>0?eur0(S.rentals.reduce(function(s,r){return s+(r.total_price||0);},0)/S.rentals.length):'—'}</div><div class="sub">на наем</div></div>
+    </div>
+
+    <!-- Фигури каталог -->
+    <div class="sdiv">🎭 Каталог с фигури за наем</div>
+    ${allRentable.length === 0
+      ? `<div class="alert blue" style="margin-bottom:14px">
+          💡 Нямаш маркирани фигури за наем. Отиди в <strong>Инвентар</strong> → редактирай продукт → постави тип "За наем" и добави наемна цена.
+        </div>`
+      : `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px;margin-bottom:16px">
+          ${allRentable.map(function(p){ return figureCard(p); }).join('')}
+        </div>`}
+
+    <!-- Активни наеми -->
+    <div class="sdiv" style="margin-top:14px">📋 Активни наеми</div>
+    <div class="table-wrap">
+      <table><thead><tr>
+        <th>Клиент</th><th>Фигури</th><th>Събитие</th><th>Връщане</th><th>Цена</th><th>Депозит</th><th>Статус</th><th></th>
+      </tr></thead><tbody>
+      ${S.rentals.filter(function(r){return r.status==='active';}).length===0
+        ?'<tr><td colspan="8"><div class="empty-state" style="padding:20px"><p>Няма активни наеми</p></div></td></tr>'
+        :S.rentals.filter(function(r){return r.status==='active';}).map(function(r){
+          var td2=today();
+          var overdue=r.return_date&&r.return_date<td2;
+          return '<tr style="'+(overdue?'background:var(--red-l)':'')+'">'+
+            '<td><strong>'+r.client_name+'</strong>'+(r.client_phone?'<div style="font-size:10px;color:var(--ink-l)">'+r.client_phone+'</div>':'')+' </td>'+
+            '<td>'+(r.rental_items||[]).length+' арт.</td>'+
+            '<td style="font-size:12px">'+(r.event_date||'—')+'</td>'+
+            '<td style="font-size:12px;color:'+(overdue?'var(--red)':'inherit')+';font-weight:'+(overdue?'700':'400')+'">'+( r.return_date||'—')+(overdue?' ⚠️':'')+' </td>'+
+            '<td style="font-weight:700">'+(r.total_price>0?eur(r.total_price):'—')+'</td>'+
+            '<td>'+(r.deposit>0?eur(r.deposit):'—')+'</td>'+
+            '<td><span class="badge '+(overdue?'br':'bg')+'">'+(overdue?'⚠️ Просрочен':'✅ Активен')+'</span></td>'+
+            '<td><div style="display:flex;gap:3px">'+
+              '<button class="btn btn-success btn-xs" onclick="returnRental(\''+r.id+'\')">↩ Върни</button>'+
+              (r.client_phone?'<button class="icon-btn" onclick="window.open(\'https://wa.me/'+(r.client_phone||'').replace(/\\D/g,\'\')+'\',\'_blank\')" title="WhatsApp">💬</button>':'')+
+            '</div></td>'+
+          '</tr>';
+        }).join('')}
+      </tbody></table>
+    </div>
+  </div>`;
+};
+
+function figureCard(p) {
+  var rentals = S.rentals.filter(function(r){
+    return (r.rental_items||[]).some(function(i){ return i.product_id===p.id; });
+  });
+  var totalEarned = rentals.reduce(function(s,r){ return s+(r.total_price||0); },0);
+  var isRented = p.status==='rented';
+  var typeLabel = p.product_type==='handmade'?'🎨 Ръчно изработена':'🖨 Принтирана';
+
+  return '<div style="background:var(--card);border:1.5px solid '+(isRented?'var(--amber)':'var(--border)')+';border-radius:var(--r);overflow:hidden;transition:.15s"'+
+    ' onmouseover="this.style.boxShadow=\'0 4px 16px rgba(0,0,0,.08)\'" onmouseout="this.style.boxShadow=\'\'">'+
+    (p.image_url
+      ?'<img src="'+p.image_url+'" style="width:100%;height:120px;object-fit:cover" onerror="this.style.display=\'none\'">'
+      :'<div style="width:100%;height:80px;background:var(--rose-l);display:flex;align-items:center;justify-content:center;font-size:32px">🎭</div>')+
+    '<div style="padding:10px">'+
+      '<div style="font-size:13px;font-weight:700;margin-bottom:3px">'+p.name+'</div>'+
+      '<div style="font-size:10px;color:var(--ink-l);margin-bottom:6px">'+typeLabel+'</div>'+
+      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-bottom:8px">'+
+        '<div style="background:var(--bg);border-radius:6px;padding:6px;text-align:center">'+
+          '<div style="font-size:14px;font-weight:800;color:var(--rose-d)">'+(p.rental_price>0?eur(p.rental_price):'—')+'</div>'+
+          '<div style="font-size:9px;color:var(--ink-l);font-weight:700;text-transform:uppercase">Наем</div>'+
+        '</div>'+
+        '<div style="background:var(--bg);border-radius:6px;padding:6px;text-align:center">'+
+          '<div style="font-size:14px;font-weight:800">'+rentals.length+'</div>'+
+          '<div style="font-size:9px;color:var(--ink-l);font-weight:700;text-transform:uppercase">Наема</div>'+
+        '</div>'+
+      '</div>'+
+      (totalEarned>0?'<div style="font-size:11px;color:var(--green);margin-bottom:6px">💶 Спечелено: '+eur0(totalEarned)+'</div>':'')+
+      '<div style="display:flex;gap:4px">'+
+        '<span class="badge '+(isRented?'bw':p.quantity>0?'bg':'br')+'">'+(isRented?'🤝 Наета':p.quantity>0?'✅ Свободна':'❌ Недостъпна')+'</span>'+
+        '<button class="btn btn-primary btn-xs" style="margin-left:auto" onclick="openFigureRentalModal(\''+p.id+'\')">+ Наем</button>'+
+      '</div>'+
+    '</div>'+
+  '</div>';
+}
+
+function openFigureRentalModal(productId) {
+  openRentalModal();
+  if (productId) {
+    setTimeout(function(){
+      rentalRows = [{ product_id: productId, quantity: 1 }];
+      renderRentalRows();
+    }, 100);
+  }
+}
+
+// ════════════════════════════════════════════
+// HANDMADE STUDIO
+// ════════════════════════════════════════════
+var hmTab = 'all';
+var HM_TYPES = {
+  candle:   { l:'🕯️ Свещи',           color:'var(--amber)',  bg:'var(--amber-l)'  },
+  soap:     { l:'🧼 Биосапуни',        color:'var(--green)',  bg:'var(--green-l)'  },
+  bouquet:  { l:'💐 Букети сапунени',  color:'var(--rose-d)', bg:'var(--rose-l)'   },
+  clay:     { l:'🏺 Полимерна глина',  color:'var(--purple)', bg:'var(--purple-l)' },
+  sign:     { l:'✍️ Надписи 3D',       color:'var(--blue)',   bg:'var(--blue-l)'   },
+  figure:   { l:'🎭 Фигури',           color:'var(--ink-m)',  bg:'var(--bg)'       },
+  gift:     { l:'🎁 Подаръчета',       color:'var(--rose-d)', bg:'var(--rose-l)'   },
+  other:    { l:'📦 Друго',            color:'var(--ink-l)',  bg:'var(--bg)'       },
+};
+
+window.render_handmade = function(el) {
+  var hmProducts = S.products.filter(function(p){
+    return p.product_type === 'handmade';
+  });
+  var filtered = hmTab==='all' ? hmProducts : hmProducts.filter(function(p){ return p.handmade_type===hmTab; });
+
+  var counts = {};
+  Object.keys(HM_TYPES).forEach(function(k){ counts[k]=0; });
+  hmProducts.forEach(function(p){ if(counts[p.handmade_type]!==undefined) counts[p.handmade_type]++; });
+
+  el.innerHTML = `
+  <div class="topbar">
+    <h2>🌸 Handmade Studio <span style="font-size:13px;color:var(--ink-m);font-weight:400">${hmProducts.length} продукта</span></h2>
+    <button class="btn btn-primary" onclick="openHandmadeModal()">+ Нов продукт</button>
+  </div>
+  <div class="content">
+
+    <!-- Линии карти -->
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px">
+      ${Object.entries(HM_TYPES).map(function(x){
+        var k=x[0],t=x[1];
+        var cnt = counts[k]||0;
+        return '<div class="stat-card clickable" onclick="hmTab=\''+k+'\';render_handmade(document.getElementById(\'page-content\'))" style="border-color:'+(hmTab===k?'var(--rose)':'var(--border)')+';background:'+(hmTab===k?'var(--rose-ll)':'var(--card)')+';padding:10px 12px">'+
+          '<div class="lbl">'+t.l+'</div>'+
+          '<div class="val" style="font-size:20px;color:'+(hmTab===k?'var(--rose-d)':t.color)+'">'+cnt+'</div>'+
+        '</div>';
+      }).join('')}
+    </div>
+
+    <div style="display:flex;gap:8px;margin-bottom:14px">
+      <button class="btn '+(hmTab==='all'?'btn-primary':'btn-secondary')+' btn-sm" onclick="hmTab=\'all\';render_handmade(document.getElementById(\'page-content\'))">Всички ${hmProducts.length}</button>
+      <button class="btn btn-secondary btn-sm" onclick="openBatchProductionModal()">🏭 Партидно производство</button>
+    </div>
+
+    ${filtered.length===0
+      ?`<div class="empty-state"><div class="ico">🌸</div><p>Няма handmade продукти</p><small>Добави свещи, сапуни, букети, фигури...</small></div>`
+      :`<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px">
+          ${filtered.map(function(p){ return handmadeCard(p); }).join('')}
+        </div>`}
+  </div>`;
+};
+
+function handmadeCard(p) {
+  var ht  = HM_TYPES[p.handmade_type||'other'];
+  var margin = p.price>0&&p.cost_price>0 ? Math.round((1-p.cost_price/p.price)*100) : 0;
+  var low = p.quantity <= (p.min_quantity||0);
+
+  return '<div style="background:var(--card);border:1.5px solid '+(low?'var(--amber)':'var(--border)')+';border-radius:var(--r);padding:12px;transition:.15s"'+
+    ' onmouseover="this.style.boxShadow=\'0 4px 16px rgba(0,0,0,.08)\'" onmouseout="this.style.boxShadow=\'\'">'+
+    '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:6px;margin-bottom:8px">'+
+      '<div>'+
+        '<div style="font-size:13px;font-weight:700">'+p.name+'</div>'+
+        '<div style="display:inline-flex;align-items:center;gap:3px;background:'+ht.bg+';color:'+ht.color+';border-radius:20px;padding:1px 7px;font-size:9px;font-weight:700;margin-top:3px">'+ht.l+'</div>'+
+      '</div>'+
+      '<div style="text-align:right">'+
+        '<div style="font-size:20px;font-weight:900;color:'+(p.quantity===0?'var(--red)':low?'var(--amber)':'var(--ink)')+'">'+p.quantity+'</div>'+
+        '<div style="font-size:9px;color:var(--ink-l)">'+(p.unit||'бр')+'</div>'+
+      '</div>'+
+    '</div>'+
+    '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:5px;margin-bottom:8px">'+
+      '<div style="background:var(--bg);border-radius:6px;padding:6px;text-align:center">'+
+        '<div style="font-size:11px;font-weight:800;color:var(--red)">'+(p.cost_price>0?eur(p.cost_price):'—')+'</div>'+
+        '<div style="font-size:8px;color:var(--ink-l);font-weight:700;margin-top:1px">СЕБЕСТ.</div>'+
+      '</div>'+
+      '<div style="background:var(--bg);border-radius:6px;padding:6px;text-align:center">'+
+        '<div style="font-size:11px;font-weight:800;color:var(--green)">'+(p.price>0?eur(p.price):'—')+'</div>'+
+        '<div style="font-size:8px;color:var(--ink-l);font-weight:700;margin-top:1px">ЦЕНА</div>'+
+      '</div>'+
+      '<div style="background:var(--bg);border-radius:6px;padding:6px;text-align:center">'+
+        '<div style="font-size:11px;font-weight:800;color:'+(margin>=50?'var(--green)':margin>=30?'var(--amber)':'var(--red)')+'">'+margin+'%</div>'+
+        '<div style="font-size:8px;color:var(--ink-l);font-weight:700;margin-top:1px">МАРЖ</div>'+
+      '</div>'+
+    '</div>'+
+    (p.production_hours?'<div style="font-size:10px;color:var(--ink-m);margin-bottom:6px">⏱ '+p.production_hours+'ч за бр.</div>':'')+
+    (p.expiry_days?'<div style="font-size:10px;color:var(--amber);margin-bottom:6px">📅 Срок: '+p.expiry_days+' дни</div>':'')+
+    '<div style="display:flex;gap:4px">'+
+      '<button class="btn btn-primary btn-xs" style="flex:1" onclick="quickMov(\''+p.id+'\')">+ Зареди</button>'+
+      '<button class="icon-btn" onclick="openHandmadeModal(\''+p.id+'\')">✏️</button>'+
+      '<button class="icon-btn danger" onclick="delProduct(\''+p.id+'\')">🗑</button>'+
+    '</div>'+
+  '</div>';
+}
+
+// ── Handmade Modal ────────────────────────────────────────────
+function buildHandmadeModal() {
+  if (document.getElementById('mod-handmade')) return;
+  var m = document.createElement('div');
+  m.id = 'mod-handmade'; m.className = 'overlay';
+  m.innerHTML = `<div class="modal" style="width:560px">
+    <div class="modal-hdr"><h3 id="mhm-title">Нов Handmade продукт</h3><button class="close-btn" onclick="cm('mod-handmade')">×</button></div>
+    <div class="fr">
+      <div class="fg"><label>Наименование *</label><input id="mhm-name" placeholder="Розова свещ с ванилия"></div>
+      <div class="fg"><label>Тип</label>
+        <select id="mhm-type">
+          ${Object.entries(HM_TYPES).map(function(x){ return '<option value="'+x[0]+'">'+x[1].l+'</option>'; }).join('')}
+        </select>
+      </div>
+    </div>
+    <div class="fr3">
+      <div class="fg"><label>Наличност</label><input type="number" id="mhm-qty" value="0" min="0"></div>
+      <div class="fg"><label>Минимум</label><input type="number" id="mhm-min" value="5" min="0"></div>
+      <div class="fg"><label>Мерна ед.</label>
+        <select id="mhm-unit"><option>бр</option><option>компл.</option><option>букет</option><option>кутия</option></select>
+      </div>
+    </div>
+    <div class="fr">
+      <div class="fg"><label>Себестойност (€) — материали</label><input type="number" id="mhm-cost" value="0" min="0" step="0.01"></div>
+      <div class="fg"><label>Продажна цена (€)</label><input type="number" id="mhm-price" value="0" min="0" step="0.01"></div>
+    </div>
+    <div class="fr">
+      <div class="fg"><label>Производствено време (мин/бр)</label><input type="number" id="mhm-time" value="0" min="0"></div>
+      <div class="fg"><label>Твоята ставка (€/ч)</label><input type="number" id="mhm-rate" value="15" min="0" step="0.5" oninput="updateHMRealCost()"></div>
+    </div>
+    <div id="mhm-real-cost" style="background:var(--rose-ll);border-radius:var(--r-sm);padding:10px 12px;margin-bottom:10px;display:none">
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;text-align:center">
+        <div><div style="font-size:10px;color:var(--ink-m)">Реална себестойност</div><div id="mhm-rc-val" style="font-size:16px;font-weight:900;color:var(--red)">—</div></div>
+        <div><div style="font-size:10px;color:var(--ink-m)">Препоръчана цена</div><div id="mhm-rec-val" style="font-size:16px;font-weight:900;color:var(--amber)">—</div></div>
+        <div><div style="font-size:10px;color:var(--ink-m)">Марж при твоята цена</div><div id="mhm-margin-val" style="font-size:16px;font-weight:900;color:var(--green)">—</div></div>
+      </div>
+    </div>
+    <div class="fr">
+      <div class="fg"><label>Срок на годност (дни)</label><input type="number" id="mhm-expiry" value="0" min="0" placeholder="0 = без срок"></div>
+      <div class="fg"><label>Снимка (URL)</label><input id="mhm-img" placeholder="https://..."></div>
+    </div>
+    <div class="fg"><label>Описание / Съставки / Бележки</label>
+      <textarea id="mhm-notes" rows="2" placeholder="Съставки, аромат, цветове..."></textarea>
+    </div>
+    <div class="form-actions">
+      <button class="btn btn-secondary" onclick="cm('mod-handmade')">Отказ</button>
+      <button id="mhm-del" class="btn btn-danger" style="display:none" onclick="delProduct(editId.handmade)">🗑</button>
+      <button class="btn btn-primary" onclick="saveHandmadeProduct()">Запази</button>
+    </div>
+  </div>`;
+  m.addEventListener('click', function(e){ if(e.target===m) cm('mod-handmade'); });
+  document.body.appendChild(m);
+
+  ['mhm-cost','mhm-time','mhm-rate','mhm-price'].forEach(function(id){
+    var inp = document.getElementById(id);
+    if (inp) inp.addEventListener('input', updateHMRealCost);
+  });
+}
+
+function updateHMRealCost() {
+  var cost  = +document.getElementById('mhm-cost')?.value||0;
+  var mins  = +document.getElementById('mhm-time')?.value||0;
+  var rate  = +document.getElementById('mhm-rate')?.value||15;
+  var price = +document.getElementById('mhm-price')?.value||0;
+  var laborCost = (mins/60)*rate;
+  var realCost  = cost + laborCost;
+  var rec       = realCost * 2.5;
+  var margin    = price>0 ? Math.round((1-realCost/price)*100) : 0;
+  var div = document.getElementById('mhm-real-cost');
+  if (div) div.style.display = realCost>0 ? 'block' : 'none';
+  var rc = document.getElementById('mhm-rc-val');
+  var rv = document.getElementById('mhm-rec-val');
+  var rm = document.getElementById('mhm-margin-val');
+  if (rc) rc.textContent = eur(realCost);
+  if (rv) rv.textContent = eur(rec);
+  if (rm) { rm.textContent = margin+'%'; rm.style.color = margin>=50?'var(--green)':margin>=30?'var(--amber)':'var(--red)'; }
+}
+
+function openHandmadeModal(id) {
+  id = id||null;
+  buildHandmadeModal();
+  editId.handmade = id;
+  var p = id ? S.products.find(function(x){ return x.id===id; }) : null;
+  document.getElementById('mhm-title').textContent = id ? 'Редактирай handmade' : 'Нов Handmade продукт';
+  document.getElementById('mhm-name').value    = p ? p.name : '';
+  document.getElementById('mhm-type').value    = p ? (p.handmade_type||'candle') : 'candle';
+  document.getElementById('mhm-qty').value     = p ? (p.quantity||0) : 0;
+  document.getElementById('mhm-min').value     = p ? (p.min_quantity||5) : 5;
+  document.getElementById('mhm-unit').value    = p ? (p.unit||'бр') : 'бр';
+  document.getElementById('mhm-cost').value    = p ? (p.cost_price||0) : 0;
+  document.getElementById('mhm-price').value   = p ? (p.price||0) : 0;
+  document.getElementById('mhm-time').value    = p ? (p.production_minutes||0) : 0;
+  document.getElementById('mhm-rate').value    = p ? (p.hourly_rate||15) : 15;
+  document.getElementById('mhm-expiry').value  = p ? (p.expiry_days||0) : 0;
+  document.getElementById('mhm-img').value     = p ? (p.image_url||'') : '';
+  document.getElementById('mhm-notes').value   = p ? (p.notes||'') : '';
+  document.getElementById('mhm-del').style.display = id ? 'inline-flex' : 'none';
+  updateHMRealCost();
+  om('mod-handmade');
+}
+
+async function saveHandmadeProduct() {
+  var name = document.getElementById('mhm-name').value.trim();
+  if (!name) { toast('Въведи наименование', 'err'); return; }
+  var payload = {
+    name: name,
+    product_type:       'handmade',
+    handmade_type:       document.getElementById('mhm-type').value,
+    quantity:           +document.getElementById('mhm-qty').value||0,
+    min_quantity:       +document.getElementById('mhm-min').value||5,
+    unit:                document.getElementById('mhm-unit').value,
+    cost_price:         +document.getElementById('mhm-cost').value||0,
+    price:              +document.getElementById('mhm-price').value||0,
+    production_minutes: +document.getElementById('mhm-time').value||0,
+    hourly_rate:        +document.getElementById('mhm-rate').value||15,
+    expiry_days:        +document.getElementById('mhm-expiry').value||0,
+    image_url:           document.getElementById('mhm-img').value.trim()||null,
+    notes:               document.getElementById('mhm-notes').value.trim()||null,
+    status: 'available'
+  };
+  if (editId.handmade) await db.from('products').update(payload).eq('id', editId.handmade);
+  else                 await db.from('products').insert(payload);
+  await dbLoad('products','products','name','*,categories(name,color),suppliers(name)');
+  cm('mod-handmade');
+  toast('Продуктът е записан ✅', 'ok');
+  go(curPage);
+}
+
+// ── Партидно производство ─────────────────────────────────────
+function openBatchProductionModal() {
+  var hmProds = S.products.filter(function(p){ return p.product_type==='handmade'; });
+  var m = document.getElementById('mod-batch');
+  if (!m) {
+    m = document.createElement('div');
+    m.id = 'mod-batch'; m.className = 'overlay';
+    m.innerHTML = `<div class="modal" style="width:520px">
+      <div class="modal-hdr"><h3>🏭 Партидно производство</h3><button class="close-btn" onclick="cm('mod-batch')">×</button></div>
+      <div class="alert blue" style="margin-bottom:14px">
+        💡 Произвеждай партиди предварително в свободното си творческо време. Системата изчислява материалите и времето.
+      </div>
+      <div id="batch-list"></div>
+      <div class="form-actions">
+        <button class="btn btn-secondary" onclick="cm('mod-batch')">Затвори</button>
+        <button class="btn btn-primary" onclick="confirmBatchProduction()">✅ Запиши производството</button>
+      </div>
+    </div>`;
+    m.addEventListener('click', function(e){ if(e.target===m) cm('mod-batch'); });
+    document.body.appendChild(m);
+  }
+
+  var list = document.getElementById('batch-list');
+  if (hmProds.length===0) {
+    list.innerHTML = '<div class="empty-state" style="padding:20px"><p>Няма handmade продукти</p></div>';
+  } else {
+    list.innerHTML = '<div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:8px;margin-bottom:8px;padding:0 2px">'+
+      '<div style="font-size:9px;color:var(--ink-l);font-weight:700;text-transform:uppercase">Продукт</div>'+
+      '<div style="font-size:9px;color:var(--ink-l);font-weight:700;text-align:center">Налично</div>'+
+      '<div style="font-size:9px;color:var(--ink-l);font-weight:700;text-align:center">Правя бр.</div>'+
+      '<div style="font-size:9px;color:var(--ink-l);font-weight:700;text-align:center">⏱ Мин.</div>'+
+    '</div>'+
+    hmProds.map(function(p,i){
+      var ht = HM_TYPES[p.handmade_type||'other'];
+      return '<div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:8px;margin-bottom:6px;align-items:center">'+
+        '<div style="font-size:12px;font-weight:600">'+p.name+'<div style="font-size:9px;color:var(--ink-l)">'+ht.l+'</div></div>'+
+        '<div style="text-align:center;font-size:12px;font-weight:700;color:'+(p.quantity<=(p.min_quantity||0)?'var(--amber)':'var(--green)')+'">'+p.quantity+' '+(p.unit||'бр')+'</div>'+
+        '<input type="number" id="batch-qty-'+i+'" data-id="'+p.id+'" data-mins="'+(p.production_minutes||0)+'" value="0" min="0" '+
+          'onchange="updateBatchTotal()" '+
+          'style="padding:5px;border:1.5px solid var(--border);border-radius:var(--r-sm);font-size:12px;text-align:center;background:var(--card);color:var(--ink)">'+
+        '<div id="batch-time-'+i+'" style="text-align:center;font-size:12px;color:var(--ink-m)">—</div>'+
+      '</div>';
+    }).join('')+
+    '<div id="batch-total" style="background:var(--rose-ll);border-radius:var(--r-sm);padding:10px;margin-top:8px;font-size:12px;color:var(--rose-d);font-weight:700;text-align:center">Въведи количества</div>';
+
+    // Event listeners след рендирането
+    setTimeout(function(){
+      hmProds.forEach(function(p,i){
+        var inp = document.getElementById('batch-qty-'+i);
+        if (inp) inp.addEventListener('input', function(){
+          var qty  = +this.value||0;
+          var mins = +this.dataset.mins||0;
+          var td   = document.getElementById('batch-time-'+i);
+          if (td) td.textContent = qty>0 ? (qty*mins)+'мин' : '—';
+          updateBatchTotal();
+        });
+      });
+    }, 50);
+  }
+  om('mod-batch');
+}
+
+function updateBatchTotal() {
+  var inputs = document.querySelectorAll('[id^="batch-qty-"]');
+  var totalMins = 0, totalItems = 0;
+  inputs.forEach(function(inp){
+    var qty  = +inp.value||0;
+    var mins = +inp.dataset.mins||0;
+    totalMins  += qty * mins;
+    totalItems += qty;
+  });
+  var el = document.getElementById('batch-total');
+  if (el && totalItems>0) {
+    var h = Math.floor(totalMins/60), m2 = totalMins%60;
+    el.textContent = '📦 ' + totalItems + ' бр. · ⏱ ' + (h>0?h+'ч ':'')+m2+'мин производство';
+  }
+}
+
+async function confirmBatchProduction() {
+  var inputs = document.querySelectorAll('[id^="batch-qty-"]');
+  var updates = [];
+  inputs.forEach(function(inp){
+    var qty = +inp.value||0;
+    if (qty>0) updates.push({ id: inp.dataset.id, qty: qty });
+  });
+  if (!updates.length) { toast('Въведи количества', 'err'); return; }
+  for (var u of updates) {
+    var p = S.products.find(function(x){ return x.id===u.id; });
+    if (!p) continue;
+    var newQty = (p.quantity||0) + u.qty;
+    await db.from('products').update({ quantity: newQty }).eq('id', u.id);
+    await db.from('movements').insert({ product_id: u.id, type:'in', quantity:u.qty, note:'Партидно производство' });
+  }
+  await dbLoad('products','products','name','*,categories(name,color),suppliers(name)');
+  await dbLoad('movements','movements','created_at','*,products(name,unit)',{asc:false,limit:200});
+  cm('mod-batch');
+  toast('Производството е записано ✅ — '+updates.length+' продукта обновени', 'ok');
+  go(curPage);
+}
+
+// ════════════════════════════════════════════
+// CREATIVE TIME ПЛАНИРОВЧИК
+// ════════════════════════════════════════════
+window.render_creativeTime = function(el) {
+  var td = today();
+  var hmProds   = S.products.filter(function(p){ return p.product_type==='handmade'; });
+  var lowHm     = hmProds.filter(function(p){ return p.quantity<=(p.min_quantity||0); });
+  var themes80  = S.themes.filter(function(t){ return t.studio_status==='ready80'||t.studio_status==='developing'; });
+  var upcomingEvs = S.quotes.filter(function(q){
+    return q.event_date && q.event_date >= td && q.event_date <= new Date(Date.now()+14*864e5).toISOString().slice(0,10) && (q.status==='accepted'||q.status==='deposit_paid');
+  });
+
+  el.innerHTML = `
+  <div class="topbar">
+    <h2>☀️ Creative Time Планировчик</h2>
+  </div>
+  <div class="content">
+
+    <!-- Избор на свободно време -->
+    <div style="background:linear-gradient(135deg,var(--rose),var(--rose-d));border-radius:16px;padding:20px;margin-bottom:16px;color:#fff">
+      <div style="font-family:'Playfair Display',serif;font-size:18px;font-weight:700;margin-bottom:8px">🌸 Колко свободно творческо време имаш?</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        ${[['1','1 час'],['2','2 часа'],['3','3 часа'],['4','4 часа'],['full','Целия ден']].map(function(x){
+          return '<button onclick="showCreativeSuggestions(\''+x[0]+'\')" style="padding:8px 16px;border-radius:20px;border:2px solid rgba(255,255,255,.5);background:rgba(255,255,255,.15);color:#fff;font-size:13px;font-weight:700;cursor:pointer;backdrop-filter:blur(4px);transition:.15s" onmouseover="this.style.background=\'rgba(255,255,255,.3)\'" onmouseout="this.style.background=\'rgba(255,255,255,.15)\'">'+x[1]+'</button>';
+        }).join('')}
+      </div>
+    </div>
+
+    <div id="creative-suggestions"></div>
+
+    <!-- Спешни нужди -->
+    ${upcomingEvs.length>0?`
+    <div class="table-wrap" style="margin-bottom:14px">
+      <div class="table-hdr"><h3>🔥 Предстоящи до 14 дни — нужни артикули</h3></div>
+      <div style="padding:10px 14px">
+        ${upcomingEvs.map(function(q){
+          var dl = daysFrom(q.event_date);
+          var items = q.quote_items||[];
+          var missing = items.filter(function(i){ var p=S.products.find(function(pr){return pr.id===i.product_id;}); return !p||p.quantity<i.quantity; });
+          return '<div style="padding:8px 0;border-bottom:1px solid var(--border)">'+
+            '<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">'+
+              '<span style="font-weight:700;font-size:13px">'+(q.clients?q.clients.name:'—')+'</span>'+
+              '<span class="badge '+(dl<=3?'br':'bw')+'">'+( dl===0?'ДНЕС':dl+'д')+'</span>'+
+              (missing.length>0?'<span class="badge br">⚠️ '+missing.length+' липсват</span>':
+               '<span class="badge bg">✅ Готово</span>')+
+            '</div>'+
+            (missing.length>0?'<div style="font-size:11px;color:var(--red)">Липсва: '+missing.map(function(i){var p=S.products.find(function(pr){return pr.id===i.product_id;}); return (p?p.name:'?')+' (×'+i.quantity+')'}).join(', ')+'</div>':'')+
+          '</div>';
+        }).join('')}
+      </div>
+    </div>` : ''}
+
+    <!-- Ниски наличности handmade -->
+    ${lowHm.length>0?`
+    <div class="alert" style="margin-bottom:14px">
+      ⚠️ ${lowHm.length} handmade продукта са под минимума:
+      ${lowHm.map(function(p){ return '<strong>'+p.name+'</strong> ('+p.quantity+' бр.)'; }).join(' · ')}
+    </div>`:''}
+
+    <!-- Теми за довършване -->
+    ${themes80.length>0?`
+    <div class="table-wrap">
+      <div class="table-hdr"><h3>🎨 Теми за довършване</h3></div>
+      <table><thead><tr><th>Тема</th><th>Статус</th><th>Производство</th><th>Наличност</th><th></th></tr></thead>
+      <tbody>
+      ${themes80.map(function(t){
+        var items = t.theme_items||[];
+        var avail = items.every(function(i){ var p=S.products.find(function(pr){return pr.id===i.product_id;}); return p&&p.quantity>=i.quantity; });
+        var st = THEME_STATUS[t.studio_status||'idea']||THEME_STATUS.idea;
+        return '<tr>'+
+          '<td><strong>'+t.name+'</strong></td>'+
+          '<td><span class="badge '+st.cls+'">'+st.l+'</span></td>'+
+          '<td style="font-size:12px">'+(t.production_hours?t.production_hours+'ч':'—')+'</td>'+
+          '<td><span class="badge '+(avail?'bg':'bw')+'">'+(avail?'✅ Готова':'⚠️ Частично')+'</span></td>'+
+          '<td><button class="btn btn-primary btn-xs" onclick="go(\'themeStudio\')">Отвори →</button></td>'+
+        '</tr>';
+      }).join('')}
+      </tbody></table>
+    </div>`:''}
+  </div>`;
+};
+
+function showCreativeSuggestions(hours) {
+  var h = hours==='full' ? 8 : +hours;
+  var td = today();
+  var hmProds = S.products.filter(function(p){ return p.product_type==='handmade'; });
+  var lowHm   = hmProds.filter(function(p){ return p.quantity<=(p.min_quantity||0); }).sort(function(a,b){
+    return (a.quantity-(a.min_quantity||0)) - (b.quantity-(b.min_quantity||0));
+  });
+  var themes80 = S.themes.filter(function(t){
+    return (t.studio_status==='ready80'||t.studio_status==='developing') && (t.production_hours||0)<=h;
+  });
+
+  var suggestions = [];
+  var remainingH  = h;
+
+  // Предложение 1 — попълни ниски запаси
+  if (lowHm.length>0) {
+    var p = lowHm[0];
+    var batchQty = Math.min(20, Math.floor(remainingH*60/(p.production_minutes||30)));
+    if (batchQty>0) {
+      suggestions.push({
+        ico:'📦', color:'var(--amber)', bg:'var(--amber-l)',
+        title: 'Попълни: '+p.name,
+        desc: 'Имаш '+p.quantity+' бр., минимум '+( p.min_quantity||0)+'. Направи '+batchQty+' бр. сега.',
+        time: batchQty*(p.production_minutes||30),
+        action: 'openBatchProductionModal()'
+      });
+      remainingH -= batchQty*(p.production_minutes||30)/60;
+    }
+  }
+
+  // Предложение 2 — довърши тема
+  if (themes80.length>0 && remainingH>0) {
+    var t = themes80[0];
+    suggestions.push({
+      ico:'🎨', color:'var(--rose-d)', bg:'var(--rose-l)',
+      title: 'Довърши тема: '+t.name,
+      desc: 'Нужни '+(t.production_hours||0)+'ч. производство — визуализацията е готова!',
+      time: (t.production_hours||0)*60,
+      action: 'go(\'themeStudio\')'
+    });
+    remainingH -= t.production_hours||0;
+  }
+
+  // Предложение 3 — ако остава време
+  if (remainingH >= 1) {
+    suggestions.push({
+      ico:'✍️', color:'var(--blue)', bg:'var(--blue-l)',
+      title: 'Canva визуализация',
+      desc: 'Имаш '+remainingH.toFixed(1)+'ч. — перфектно за нов дизайн в Canva.',
+      time: remainingH*60,
+      action: 'window.open(\'https://www.canva.com\',\'_blank\')'
+    });
+  }
+
+  var el = document.getElementById('creative-suggestions');
+  if (!el) return;
+  el.innerHTML = '<div class="sdiv" style="margin-bottom:10px">💡 Предложен план за '+( hours==='full'?'целия ден':hours+' ч.')+'</div>'+
+    suggestions.map(function(s,i){
+      var hStr = Math.floor(s.time/60)>0 ? Math.floor(s.time/60)+'ч ' : '';
+      var mStr = s.time%60>0 ? (s.time%60)+'мин' : '';
+      return '<div style="background:'+s.bg+';border-radius:var(--r);padding:14px;margin-bottom:10px;display:flex;align-items:center;gap:14px">'+
+        '<div style="font-size:32px;flex-shrink:0">'+s.ico+'</div>'+
+        '<div style="flex:1">'+
+          '<div style="font-size:14px;font-weight:700;color:'+s.color+'">'+( i+1)+'. '+s.title+'</div>'+
+          '<div style="font-size:12px;color:var(--ink-m);margin-top:2px">'+s.desc+'</div>'+
+          '<div style="font-size:11px;color:var(--ink-l);margin-top:3px">⏱ '+hStr+mStr+'</div>'+
+        '</div>'+
+        '<button onclick="'+s.action+'" class="btn btn-secondary btn-sm" style="flex-shrink:0">Започни →</button>'+
+      '</div>';
+    }).join('') ||
+    '<div class="empty-state" style="padding:20px"><p>Всичко е наред!</p><small>Нямаш спешни задачи за творческото време</small></div>';
+}
+
+// SQL needed:
+// ALTER TABLE products ADD COLUMN IF NOT EXISTS handmade_type text;
+// ALTER TABLE products ADD COLUMN IF NOT EXISTS production_minutes integer DEFAULT 0;
+// ALTER TABLE products ADD COLUMN IF NOT EXISTS expiry_days integer DEFAULT 0;
+// ALTER TABLE products ADD COLUMN IF NOT EXISTS hourly_rate numeric DEFAULT 15;
+// ALTER TABLE products ADD COLUMN IF NOT EXISTS is_rentable boolean DEFAULT false;
+// ALTER TABLE products ADD COLUMN IF NOT EXISTS rental_price numeric DEFAULT 0;
+
+console.log('✅ Наем на фигури + Handmade Studio + Creative Time заредени!');
+</script>
