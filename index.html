@@ -2814,7 +2814,7 @@ async function delClient(id) {
 // БЛОК 3 — ОФЕРТИ
 // ════════════════════════════════════════════
 let quoteFilter = 'all';
-let qiRows = [];
+// qiRows е декларирана глобално по-горе
 
 window.render_quotes = function(el) {
   const q = searchQ.toLowerCase();
@@ -4439,7 +4439,7 @@ window.render_reports = function(el) {
 // ════════════════════════════════════════════
 // БЛОК 6 — НАЕМИ
 // ════════════════════════════════════════════
-var rentalRows = [];
+// rentalRows е декларирана глобално по-горе
 
 window.render_rentals = function(el) {
   var td = today();
@@ -5975,8 +5975,10 @@ function renderImportHistory() {
   item.dataset.page = 'themeStudio';
   item.onclick = function(){ go('themeStudio'); };
   item.innerHTML = '<svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="14" height="14"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01"/></svg>Theme Studio';
-  nav.insertBefore(sec, nav.querySelector('[data-page="portfolio"]').parentNode || nav.lastChild);
-  nav.insertBefore(item, sec.nextSibling);
+  var portfolioItem = nav.querySelector('[data-page="portfolio"]');
+  var insertPoint = portfolioItem || nav.lastChild;
+  nav.insertBefore(sec, insertPoint);
+  nav.insertBefore(item, insertPoint);
   PAGE_TITLES['themeStudio'] = 'Theme Studio';
 })();
 
@@ -7554,4 +7556,420 @@ function convertInquiryToClient(encoded) {
     toast('Попълни данните и запази клиента', 'ok');
   } catch(e) {}
 }
+</script>
+
+<script>
+'use strict';
+// ════════════════════════════════════════════
+// БАКШИШИ — проследяване и анализ
+// ════════════════════════════════════════════
+
+// Добавяме бакшиш бутон при приключване на събитие
+var _orig_completeEvent = window.completeEvent;
+window.completeEvent = async function(qid) {
+  var q = S.quotes.find(function(x){ return x.id===qid; });
+  if (!q) return;
+  var cl = S.clients.find(function(c){ return c.id===q.client_id; });
+
+  // Питаме за бакшиш преди да приключим
+  var m = document.getElementById('mod-complete-event');
+  if (!m) {
+    m = document.createElement('div');
+    m.id = 'mod-complete-event';
+    m.className = 'overlay';
+    m.innerHTML = `<div class="modal" style="width:420px">
+      <div class="modal-hdr">
+        <h3>✅ Приключи събитието</h3>
+        <button class="close-btn" onclick="cm('mod-complete-event')">×</button>
+      </div>
+      <div id="mce-client" style="font-size:14px;font-weight:700;margin-bottom:14px"></div>
+      <div style="background:var(--green-l);border-radius:var(--r-sm);padding:12px 14px;margin-bottom:14px">
+        <div style="font-size:12px;font-weight:700;color:var(--green);margin-bottom:8px">🎁 Получен бакшиш?</div>
+        <div style="display:flex;gap:10px;align-items:center">
+          <label style="display:flex;align-items:center;gap:5px;font-size:13px;cursor:pointer">
+            <input type="radio" name="baksish-yn" value="yes" style="accent-color:var(--green)"> Да
+          </label>
+          <label style="display:flex;align-items:center;gap:5px;font-size:13px;cursor:pointer">
+            <input type="radio" name="baksish-yn" value="no" checked style="accent-color:var(--green)"> Не
+          </label>
+        </div>
+        <div id="mce-baksish-amount" style="display:none;margin-top:10px">
+          <div class="fg" style="margin:0">
+            <label>Сума (€)</label>
+            <input type="number" id="mce-amount" value="0" min="0" step="0.5" style="width:120px">
+          </div>
+          <div style="display:flex;gap:6px;margin-top:6px;flex-wrap:wrap">
+            ${[5,10,15,20,30,50].map(function(n){
+              return '<span onclick="document.getElementById(\'mce-amount\').value='+n+'" style="background:var(--green-l);color:var(--green);border-radius:20px;padding:2px 10px;font-size:11px;font-weight:700;cursor:pointer;border:1.5px solid color-mix(in srgb,var(--green) 30%,transparent)">€'+n+'</span>';
+            }).join('')}
+          </div>
+        </div>
+      </div>
+      <div class="fg">
+        <label>От кого?</label>
+        <select id="mce-from">
+          <option value="client">Поръчителят</option>
+          <option value="birthday">Рожденикът / семейството</option>
+          <option value="other">Друго</option>
+        </select>
+      </div>
+      <div class="fg">
+        <label>Бележка (по желание)</label>
+        <input id="mce-note" placeholder="Казаха, че никога не са виждали нещо толкова красиво 🌸">
+      </div>
+      <div class="fg">
+        <label>Снимки от събитието (URL-и, нов ред)</label>
+        <textarea id="mce-photos" rows="3" placeholder="https://...&#10;https://..."></textarea>
+      </div>
+      <div class="form-actions">
+        <button class="btn btn-secondary" onclick="cm('mod-complete-event')">Отказ</button>
+        <button class="btn btn-primary" id="mce-confirm-btn">✅ Приключи</button>
+      </div>
+    </div>`;
+    m.addEventListener('click', function(e){ if(e.target===m) cm('mod-complete-event'); });
+    document.body.appendChild(m);
+
+    // Toggle бакшиш поле
+    m.querySelectorAll('input[name="baksish-yn"]').forEach(function(radio){
+      radio.addEventListener('change', function(){
+        document.getElementById('mce-baksish-amount').style.display =
+          this.value === 'yes' ? 'block' : 'none';
+      });
+    });
+  }
+
+  document.getElementById('mce-client').textContent = '🎉 ' + (cl ? cl.name : '—') + ' · ' + (q.event_date||'');
+  document.getElementById('mce-amount').value = 0;
+  document.getElementById('mce-note').value   = '';
+  document.getElementById('mce-photos').value = '';
+  m.querySelectorAll('input[name="baksish-yn"]').forEach(function(r){ r.checked = r.value==='no'; });
+  document.getElementById('mce-baksish-amount').style.display = 'none';
+
+  // Confirm бутон
+  document.getElementById('mce-confirm-btn').onclick = async function() {
+    var hasBaksish = m.querySelector('input[name="baksish-yn"]:checked')?.value === 'yes';
+    var amount     = hasBaksish ? +document.getElementById('mce-amount').value||0 : 0;
+    var from_who   = document.getElementById('mce-from').value;
+    var note       = document.getElementById('mce-note').value.trim();
+    var photos     = document.getElementById('mce-photos').value.trim().split('\n').filter(Boolean);
+
+    // Записваме в базата
+    await db.from('quotes').update({
+      status: 'completed',
+      updated_at: new Date().toISOString(),
+      baksish_amount: amount,
+      baksish_from: from_who,
+      baksish_note: note||null,
+      completion_photos: photos
+    }).eq('id', qid);
+
+    // Ако бакшиш > 0 → известие
+    if (amount > 0) {
+      await db.from('notifications').insert({
+        type: 'baksish',
+        title: '🎁 Бакшиш от ' + (cl?cl.name:'клиент') + ': €' + amount,
+        message: note || 'Получен при приключване на събитие',
+        link_to: 'finances',
+        link_id: qid
+      });
+    }
+
+    // Ако има снимки → добавяме в портфолио
+    if (photos.length > 0) {
+      await db.from('portfolio').insert({
+        title: (cl?cl.name:'Събитие') + ' · ' + (q.event_date||''),
+        image_url: photos[0],
+        extra_images: photos.slice(1),
+        event_type: q.event_type||null,
+        event_date: q.event_date||null,
+        is_public: true,
+        description: note||null
+      });
+      await dbLoad('portfolio','portfolio','created_at','*',{asc:false});
+    }
+
+    // Follow-up: планираме автоматичен reminder
+    scheduleFollowUp(qid, q, cl);
+
+    await dbLoad('quotes','quotes','created_at','*,clients(name,phone),quote_items(*)',{asc:false});
+    await loadNotifications();
+    cm('mod-complete-event');
+
+    var msg = '✅ Събитието е приключено!';
+    if (amount > 0) msg += ' · Бакшиш €'+amount+' 🎁';
+    if (photos.length > 0) msg += ' · Снимки добавени в портфолиото 📸';
+    toast(msg, 'ok');
+    go(curPage);
+  };
+
+  om('mod-complete-event');
+};
+
+// ════════════════════════════════════════════
+// FOLLOW-UP АВТОМАТИЗАЦИЯ
+// ════════════════════════════════════════════
+function scheduleFollowUp(qid, q, cl) {
+  if (!cl) return;
+  var now = Date.now();
+  var followUps = [
+    { days: 1,  type: 'review_request',   title: '💌 Помоли за отзив: ' + (cl.name||''),        msg: 'Вчера беше събитието. Изпрати съобщение за отзив!' },
+    { days: 7,  type: 'thank_you',         title: '🌸 Благодарствено: ' + (cl.name||''),          msg: 'Седмица след събитието — добър момент за лично съобщение.' },
+    { days: 30, type: 'next_inquiry',      title: '🔔 Следваща поръчка?: ' + (cl.name||''),      msg: 'Мина месец. Питай дали има планиране за следващо събитие.' },
+  ];
+
+  // Рожден ден напомняне
+  if (cl.birthday) {
+    var bd    = new Date(cl.birthday);
+    var thisY = new Date().getFullYear();
+    var nextBd= new Date(thisY, bd.getMonth(), bd.getDate());
+    if (nextBd < new Date()) nextBd = new Date(thisY+1, bd.getMonth(), bd.getDate());
+    var daysUntilBd = Math.ceil((nextBd - new Date()) / 864e5);
+    followUps.push({
+      days: daysUntilBd - 30,
+      type: 'birthday_reminder',
+      title: '🎂 Рожден ден на ' + cl.name + ' след 30 дни!',
+      msg: 'Подготви специална оферта за рождения ден на клиента.'
+    });
+  }
+
+  // Записваме follow-up-ите
+  followUps.forEach(function(fu) {
+    if (fu.days <= 0) return;
+    var dueDate = new Date(now + fu.days * 864e5).toISOString().slice(0,10);
+    db.from('tasks').insert({
+      description: fu.title,
+      type: 'business',
+      priority: fu.days <= 3 ? 'high' : 'medium',
+      due_date: dueDate,
+      completed: false
+    }).then(function(){}).catch(function(){});
+  });
+
+  // Веднага показваме WhatsApp шаблон за следващия ден
+  setTimeout(function(){
+    if (!cl.phone) return;
+    var msg2 = 'Здравейте, ' + (cl.name.split(' ')[0]||'') + '! 🌸\n\n' +
+      'Надявам се събитието да е минало чудесно! ' +
+      'Ще се радвам на отзив — помага ми да се подобрявам и достига до повече семейства. 🌟\n\n' +
+      'Благодаря за доверието!\nEleya Decor 🌸';
+    var link = 'https://wa.me/' + cl.phone.replace(/\D/g,'') + '?text=' + encodeURIComponent(msg2);
+    var banner = document.createElement('div');
+    banner.style.cssText = 'position:fixed;bottom:80px;right:16px;background:var(--card);border:1.5px solid var(--border);border-radius:var(--r);padding:14px;max-width:280px;box-shadow:0 8px 24px rgba(0,0,0,.15);z-index:9998';
+    banner.innerHTML = '<div style="font-size:13px;font-weight:700;margin-bottom:6px">💌 Изпрати follow-up?</div>' +
+      '<div style="font-size:11px;color:var(--ink-m);margin-bottom:8px">Готово съобщение за отзив от <strong>'+(cl.name.split(' ')[0]||'')+'</strong></div>' +
+      '<div style="display:flex;gap:6px">'+
+        '<a href="'+link+'" target="_blank" style="flex:1;padding:7px;background:#25D366;color:#fff;border-radius:7px;font-size:12px;font-weight:700;text-align:center;text-decoration:none">💬 Изпрати</a>'+
+        '<button onclick="this.closest(\'div\').remove()" style="padding:7px 10px;border:1.5px solid var(--border);background:var(--card);border-radius:7px;font-size:12px;cursor:pointer">✕</button>'+
+      '</div>';
+    document.body.appendChild(banner);
+    setTimeout(function(){ banner.remove(); }, 30000);
+  }, 2000);
+}
+
+// ════════════════════════════════════════════
+// МЕКА РЕЗЕРВАЦИЯ С ТАЙМЕР
+// ════════════════════════════════════════════
+
+// Добавяме в QSTATUS
+if (typeof QSTATUS !== 'undefined') {
+  QSTATUS['soft_hold'] = { l: '🟡 Мека резервация', cls: 'bw' };
+}
+
+function openSoftHoldModal(qid) {
+  var q  = S.quotes.find(function(x){ return x.id===qid; });
+  if (!q) return;
+  var cl = S.clients.find(function(c){ return c.id===q.client_id; });
+
+  var m = document.getElementById('mod-soft-hold');
+  if (!m) {
+    m = document.createElement('div');
+    m.id = 'mod-soft-hold';
+    m.className = 'overlay';
+    m.innerHTML = `<div class="modal" style="width:420px">
+      <div class="modal-hdr">
+        <h3>🟡 Мека резервация</h3>
+        <button class="close-btn" onclick="cm('mod-soft-hold')">×</button>
+      </div>
+      <div id="msh-info" style="font-size:13px;color:var(--ink-m);margin-bottom:14px"></div>
+      <div class="alert blue" style="margin-bottom:14px">
+        💡 Меката резервация блокира датата временно. Ако клиентът не потвърди в срока — датата се освобождава автоматично и получаваш известие.
+      </div>
+      <div class="fg">
+        <label>Срок за потвърждение</label>
+        <select id="msh-days">
+          <option value="1">24 часа</option>
+          <option value="2">48 часа</option>
+          <option value="3" selected>3 дни</option>
+          <option value="5">5 дни</option>
+          <option value="7">7 дни</option>
+        </select>
+      </div>
+      <div class="fg">
+        <label>Съобщение до клиента</label>
+        <textarea id="msh-msg" rows="5"></textarea>
+      </div>
+      <div class="form-actions">
+        <button class="btn btn-secondary" onclick="cm('mod-soft-hold')">Отказ</button>
+        <button class="btn btn-primary" onclick="confirmSoftHold()">🟡 Постави мека резервация</button>
+      </div>
+    </div>`;
+    m.addEventListener('click', function(e){ if(e.target===m) cm('mod-soft-hold'); });
+    document.body.appendChild(m);
+  }
+
+  editId.softHold = qid;
+  var firstName = cl ? cl.name.split(' ')[0] : '';
+  document.getElementById('msh-info').textContent = (cl?cl.name:'—') + ' · ' + (q.event_date||'—');
+  document.getElementById('msh-msg').value =
+    'Здравейте, ' + firstName + '! 🌸\n\n' +
+    'Запазваме датата ' + (q.event_date||'___') + ' само за Вас за следващите 3 дни.\n\n' +
+    'Ако потвърдите в срок с депозит от ' + eur0(q.deposit_amount||0) + ' — датата е ваша!\n\n' +
+    'При неполучен отговор датата се освобождава автоматично.\n\n' +
+    'Eleya Decor 🌸';
+  om('mod-soft-hold');
+}
+
+async function confirmSoftHold() {
+  var qid  = editId.softHold;
+  var days = +document.getElementById('msh-days').value || 3;
+  var msg  = document.getElementById('msh-msg').value.trim();
+  if (!qid) return;
+
+  var deadline = new Date(Date.now() + days * 864e5).toISOString().slice(0,10);
+  await db.from('quotes').update({
+    status: 'soft_hold',
+    soft_hold_deadline: deadline,
+    updated_at: new Date().toISOString()
+  }).eq('id', qid);
+
+  // Задача за следене
+  await db.from('tasks').insert({
+    description: '🟡 Провери мека резервация — ' + (S.quotes.find(function(x){return x.id===qid;})?.clients?.name||'клиент'),
+    type: 'business',
+    priority: 'high',
+    due_date: deadline,
+    completed: false
+  });
+
+  await dbLoad('quotes','quotes','created_at','*,clients(name,phone),quote_items(*)',{asc:false});
+  await dbLoad('tasks','tasks','created_at','*',{asc:false,limit:200});
+
+  // Копираме съобщението
+  if (msg) navigator.clipboard.writeText(msg).catch(function(){});
+  cm('mod-soft-hold');
+  toast('🟡 Мека резервация поставена до ' + deadline + ' · Съобщението е копирано!', 'ok');
+  go(curPage);
+}
+
+// Проверка на изтекли меки резервации
+async function checkSoftHoldExpiry() {
+  var td = today();
+  var expired = S.quotes.filter(function(q){
+    return q.status === 'soft_hold' && q.soft_hold_deadline && q.soft_hold_deadline < td;
+  });
+  for (var q of expired) {
+    await db.from('quotes').update({ status:'expired', updated_at:new Date().toISOString() }).eq('id',q.id);
+    await db.from('notifications').insert({
+      type: 'soft_hold_expired',
+      title: '⏰ Изтекла мека резервация: ' + (q.clients?.name||''),
+      message: 'Датата ' + (q.event_date||'') + ' е освободена автоматично',
+      link_to: 'quotes',
+      link_id: q.id
+    });
+  }
+  if (expired.length > 0) {
+    await dbLoad('quotes','quotes','created_at','*,clients(name,phone),quote_items(*)',{asc:false});
+    await loadNotifications();
+  }
+}
+
+// Добавяме в smartChecks
+var _origSmartChecks = window.smartChecks;
+window.smartChecks = async function() {
+  await checkSoftHoldExpiry();
+  if (_origSmartChecks) return _origSmartChecks();
+};
+
+// Добавяме бутон "Мека резервация" в quote cards
+var _origQuoteCard = window.quoteCard;
+if (typeof quoteCard === 'function') {
+  window.quoteCard = function(q) {
+    var html = _origQuoteCard(q);
+    return html.replace(
+      '<button class="btn btn-secondary btn-sm" onclick="openStatusModal(\''+q.id+'\',\''+q.status+'\')">🔄 Статус</button>',
+      '<button class="btn btn-secondary btn-sm" onclick="openStatusModal(\''+q.id+'\',\''+q.status+'\')">🔄 Статус</button>'+
+      (q.status==='sent'||q.status==='seen' ? '<button class="btn btn-secondary btn-sm" onclick="openSoftHoldModal(\''+q.id+'\')">🟡 Мека рез.</button>' : '')
+    );
+  };
+}
+
+// ════════════════════════════════════════════
+// БАКШИШИ — Анализ в Отчети
+// ════════════════════════════════════════════
+var _origReports = window.render_reports;
+window.render_reports = function(el) {
+  _origReports(el);
+
+  // Добавяме бакшиш секция след основните отчети
+  var content = document.querySelector('.content');
+  if (!content) return;
+
+  var completedWithBaksish = S.quotes.filter(function(q){
+    return q.status === 'completed' && q.baksish_amount > 0;
+  });
+  var totalBaksish = completedWithBaksish.reduce(function(s,q){ return s+(q.baksish_amount||0); },0);
+  var baksishRate  = S.quotes.filter(function(q){ return q.status==='completed'; }).length > 0
+    ? (completedWithBaksish.length / S.quotes.filter(function(q){ return q.status==='completed'; }).length * 100).toFixed(0)
+    : 0;
+
+  var div = document.createElement('div');
+  div.innerHTML = `
+  <div class="table-wrap" style="margin-top:14px">
+    <div class="table-hdr"><h3>🎁 Анализ на бакшишите</h3></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;padding:14px">
+      <div style="background:var(--green-l);border-radius:var(--r-sm);padding:14px;text-align:center">
+        <div style="font-size:28px;font-weight:900;color:var(--green)">${eur(totalBaksish)}</div>
+        <div style="font-size:11px;color:var(--green);margin-top:3px">Общо бакшиши</div>
+      </div>
+      <div style="background:var(--blue-l);border-radius:var(--r-sm);padding:14px;text-align:center">
+        <div style="font-size:28px;font-weight:900;color:var(--blue)">${completedWithBaksish.length}</div>
+        <div style="font-size:11px;color:var(--blue);margin-top:3px">Събития с бакшиш</div>
+      </div>
+      <div style="background:var(--rose-l);border-radius:var(--r-sm);padding:14px;text-align:center">
+        <div style="font-size:28px;font-weight:900;color:var(--rose-d)">${baksishRate}%</div>
+        <div style="font-size:11px;color:var(--rose-d);margin-top:3px">% от приключени</div>
+      </div>
+    </div>
+    ${completedWithBaksish.length > 0 ? `
+    <table><thead><tr><th>Клиент</th><th>Дата</th><th>Тема</th><th>Приход</th><th>Бакшиш</th><th>От</th><th>Бележка</th></tr></thead>
+    <tbody>
+    ${completedWithBaksish.map(function(q){
+      var fromMap = {client:'Поръчителят',birthday:'Рождениkът',other:'Друго'};
+      return '<tr>'+
+        '<td><strong>'+(q.clients?.name||'—')+'</strong></td>'+
+        '<td style="font-size:11px">'+(q.event_date||'—')+'</td>'+
+        '<td style="font-size:11px">'+(q.event_type||'—')+'</td>'+
+        '<td style="font-weight:700;color:var(--green)">'+eur0(q.total_price)+'</td>'+
+        '<td style="font-weight:800;color:var(--green)">🎁 '+eur(q.baksish_amount)+'</td>'+
+        '<td style="font-size:11px">'+(fromMap[q.baksish_from]||'—')+'</td>'+
+        '<td style="font-size:11px;color:var(--ink-m)">'+(q.baksish_note||'—')+'</td>'+
+      '</tr>';
+    }).join('')}
+    </tbody></table>` : '<div class="empty-state" style="padding:20px"><p>Няма бакшиши все още</p></div>'}
+  </div>`;
+  content.appendChild(div);
+};
+
+// ════════════════════════════════════════════
+// СУПЕРBASE ТАБЛИЦА — добавяме нови колони
+// (за soft_hold_deadline, baksish_amount и др.)
+// ════════════════════════════════════════════
+// SQL за изпълнение в Supabase:
+// ALTER TABLE quotes ADD COLUMN IF NOT EXISTS soft_hold_deadline date;
+// ALTER TABLE quotes ADD COLUMN IF NOT EXISTS baksish_amount numeric DEFAULT 0;
+// ALTER TABLE quotes ADD COLUMN IF NOT EXISTS baksish_from text;
+// ALTER TABLE quotes ADD COLUMN IF NOT EXISTS baksish_note text;
+// ALTER TABLE quotes ADD COLUMN IF NOT EXISTS completion_photos jsonb;
+
+console.log('✅ Бакшиши + Мека резервация + Follow-up заредени!');
 </script>
