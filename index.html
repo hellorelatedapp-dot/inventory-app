@@ -11187,3 +11187,110 @@ window.handleGemarExcelImport = async function(file) {
 };
 console.log('✅ Gemar v3 зареден');
 </script>
+
+<script>
+'use strict';
+// ════════════════════════════════════════════
+// ФИНАЛНА ЧИСТА ВЕРСИЯ — saveClient
+// ════════════════════════════════════════════
+
+window.saveClient = async function() {
+  var name = (document.getElementById('mcl-name')?.value || '').trim();
+  if (!name) { toast('Въведи името на клиента', 'err'); return; }
+
+  // Събираме payload само с колони които съществуват в Supabase
+  var payload = {
+    name:              name,
+    phone:             document.getElementById('mcl-phone')?.value.trim()  || null,
+    email:             document.getElementById('mcl-email')?.value.trim()  || null,
+    birthday:          document.getElementById('mcl-bday')?.value          || null,
+    how_found:         document.getElementById('mcl-found')?.value         || null,
+    preferred_contact: document.getElementById('mcl-contact')?.value       || 'whatsapp',
+    style_pref:        document.getElementById('mcl-style')?.value         || null,
+    budget_range:      document.getElementById('mcl-budget')?.value        || null,
+    rating:           +(document.getElementById('mcl-rating')?.value       || 5),
+    is_vip:            document.getElementById('mcl-vip')?.checked         || false,
+    notes:             document.getElementById('mcl-notes')?.value.trim()  || null,
+    family_members:    (typeof familyRows !== 'undefined' ? familyRows.filter(function(f){ return f.name; }) : []),
+  };
+
+  // Препоръчан от
+  var foundVal = document.getElementById('mcl-found')?.value;
+  var refId    = document.getElementById('mcl-referred-by')?.value || null;
+  if (foundVal === 'Препоръка' && refId) {
+    payload.referred_by = refId;
+  }
+
+  try {
+    var isNew = !editId.client;
+
+    if (editId.client) {
+      var upd = await db.from('clients').update(payload).eq('id', editId.client);
+      if (upd.error) throw new Error(upd.error.message);
+    } else {
+      var ins = await db.from('clients').insert(payload);
+      if (ins.error) throw new Error(ins.error.message);
+
+      // Обновяваме referral_count ако е препоръчан
+      if (foundVal === 'Препоръка' && refId) {
+        var ref = S.clients.find(function(c){ return c.id === refId; });
+        if (ref) {
+          await db.from('clients').update({
+            referral_count: (ref.referral_count || 0) + 1
+          }).eq('id', refId);
+        }
+      }
+    }
+
+    // Презареждаме клиентите
+    await dbLoad('clients', 'clients', 'name');
+    cm('mod-client');
+    toast(isNew ? '✅ Клиентът е добавен!' : '✅ Клиентът е обновен!', 'ok');
+    go('clients');
+
+  } catch(e) {
+    console.error('saveClient грешка:', e);
+
+    // Ако грешката е за липсваща колона — пробваме без нея
+    if (e.message && e.message.includes('referred_by')) {
+      delete payload.referred_by;
+      try {
+        if (editId.client) {
+          await db.from('clients').update(payload).eq('id', editId.client);
+        } else {
+          await db.from('clients').insert(payload);
+        }
+        await dbLoad('clients', 'clients', 'name');
+        cm('mod-client');
+        toast('✅ Клиентът е добавен! (без referred_by)', 'ok');
+        go('clients');
+        return;
+      } catch(e2) {
+        console.error('Retry грешка:', e2);
+      }
+    }
+
+    if (e.message && e.message.includes('family_members')) {
+      delete payload.family_members;
+      try {
+        if (editId.client) {
+          await db.from('clients').update(payload).eq('id', editId.client);
+        } else {
+          await db.from('clients').insert(payload);
+        }
+        await dbLoad('clients', 'clients', 'name');
+        cm('mod-client');
+        toast('✅ Клиентът е добавен!', 'ok');
+        go('clients');
+        return;
+      } catch(e3) {
+        console.error('Retry 2 грешка:', e3);
+      }
+    }
+
+    toast('Грешка: ' + e.message, 'err');
+  }
+};
+
+console.log('✅ saveClient финална версия заредена');
+</script>
