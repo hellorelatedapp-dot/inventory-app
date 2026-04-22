@@ -9940,3 +9940,761 @@ if (typeof render_quotes === 'function') {
 
 console.log('✅ Финални поправки v3: Клиенти · Dashboard · Gemar Excel · Дати BG · Препоръчан от');
 </script>
+
+<script>
+'use strict';
+// ════════════════════════════════════════════
+// БЪРЗА ФОРМА ЗА ДОБАВЯНЕ НА АРТИКУЛ
+// ════════════════════════════════════════════
+
+// Добавяме в навигацията
+(function addQuickAddNav() {
+  var nav = document.getElementById('sidenav');
+  if (!nav) return;
+  // Намираме "Импорт" секцията и добавяме след нея
+  var items = nav.querySelectorAll('.nav-item');
+  var importItem = null;
+  items.forEach(function(i){ if(i.dataset.page==='import') importItem=i; });
+
+  var item = document.createElement('div');
+  item.className = 'nav-item';
+  item.dataset.page = 'quickAdd';
+  item.onclick = function(){ go('quickAdd'); };
+  item.innerHTML = '<svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="14" height="14"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>Добави артикул';
+
+  if (importItem && importItem.nextSibling) {
+    nav.insertBefore(item, importItem.nextSibling);
+  } else {
+    nav.appendChild(item);
+  }
+  PAGE_TITLES['quickAdd'] = 'Добави артикул';
+})();
+
+// ── Категории за артикули ────────────────────────────────────
+var QUICK_CATS = [
+  '🎈 Балони — Пастел',
+  '🎈 Балони — Металик',
+  '🎈 Балони — Shiny/Хром',
+  '🎈 Балони — Marshmallow',
+  '🎈 Балони — Macaron',
+  '🎈 Балони — Neon',
+  '🎈 Балони — Фолио',
+  '🎈 Балони — Гигант 18"',
+  '🏛 Арки & Покривала',
+  '🧵 Консумативи (лента, тел...)',
+  '🖨 Фигури — принтирани',
+  '🎨 Фигури — рисувани',
+  '🪵 Стиропор',
+  '✂️ Cricut материали',
+  '🕯️ Handmade — Свещи',
+  '🧼 Handmade — Сапуни',
+  '💐 Handmade — Букети',
+  '🏺 Handmade — Полимерна глина',
+  '💡 Осветление',
+  '📦 Опаковки',
+  '🎁 Подаръчета',
+  '🔧 Инструменти',
+  '📦 Друго',
+];
+
+var WEIGHT_UNITS = ['г', 'кг'];
+var SIZE_UNITS   = ['см', 'мм', 'м'];
+var QTY_UNITS    = ['бр', 'м', 'кг', 'г', 'л', 'мл', 'пакет', 'компл.', 'ролка'];
+
+// ── Render Quick Add ──────────────────────────────────────────
+window.render_quickAdd = function(el) {
+  el.innerHTML = `
+  <div class="topbar">
+    <h2>➕ Добави артикул</h2>
+    <button class="btn btn-secondary btn-sm" onclick="go('inventory')">← Инвентар</button>
+  </div>
+  <div class="content">
+    <div style="max-width:680px;margin:0 auto">
+
+      <!-- ОСНОВНИ -->
+      <div style="background:var(--card);border:1.5px solid var(--border);border-radius:var(--r);padding:20px;margin-bottom:14px">
+        <div style="font-size:12px;font-weight:700;color:var(--rose-d);text-transform:uppercase;letter-spacing:.08em;margin-bottom:14px">📋 Основна информация</div>
+
+        <div class="fg">
+          <label>Наименование *</label>
+          <input id="qa-name" placeholder="Напр. Розово покривало за арка 100×200см" autofocus>
+        </div>
+
+        <div class="fr">
+          <div class="fg">
+            <label>Категория *</label>
+            <select id="qa-cat">
+              <option value="">— Избери —</option>
+              ${QUICK_CATS.map(function(c){ return '<option value="'+c+'">'+c+'</option>'; }).join('')}
+            </select>
+          </div>
+          <div class="fg">
+            <label>Доставчик</label>
+            <select id="qa-supplier">
+              <option value="">— Без доставчик —</option>
+              ${S.suppliers.map(function(s){ return '<option value="'+s.id+'">'+s.name+'</option>'; }).join('')}
+              <option value="temu">Temu</option>
+              <option value="shein">Shein</option>
+              <option value="gemar">Gemar / Ukrasi.com</option>
+              <option value="aliexpress">AliExpress</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="fr">
+          <div class="fg">
+            <label>Количество *</label>
+            <div style="display:flex;gap:6px">
+              <input type="number" id="qa-qty" value="1" min="0" step="1" style="flex:1">
+              <select id="qa-unit" style="width:80px;padding:8px 6px;border:1.5px solid var(--border);border-radius:var(--r-sm);font-size:13px;background:var(--card);color:var(--ink)">
+                ${QTY_UNITS.map(function(u){ return '<option>'+u+'</option>'; }).join('')}
+              </select>
+            </div>
+          </div>
+          <div class="fg">
+            <label>Минимум (предупреждение)</label>
+            <input type="number" id="qa-min" value="5" min="0" step="1" placeholder="5">
+          </div>
+        </div>
+      </div>
+
+      <!-- ЦВЯТ И ОПИСАНИЕ -->
+      <div style="background:var(--card);border:1.5px solid var(--border);border-radius:var(--r);padding:20px;margin-bottom:14px">
+        <div style="font-size:12px;font-weight:700;color:var(--rose-d);text-transform:uppercase;letter-spacing:.08em;margin-bottom:14px">🎨 Цвят & Описание</div>
+
+        <div class="fr">
+          <div class="fg">
+            <label>Цвят</label>
+            <div style="display:flex;gap:8px;align-items:center">
+              <input type="color" id="qa-color-pick" value="#c9748a" style="width:44px;height:40px;border-radius:8px;border:1.5px solid var(--border);cursor:pointer;background:none;padding:2px" oninput="document.getElementById('qa-color-name').placeholder=this.value">
+              <input id="qa-color-name" placeholder="Напр. Розово пудра, #091 Shiny Pink..." style="flex:1">
+            </div>
+          </div>
+          <div class="fg">
+            <label>Серия / Тип</label>
+            <select id="qa-series">
+              <option value="">—</option>
+              <option>Пастел</option>
+              <option>Металик</option>
+              <option>Shiny / Хром</option>
+              <option>Marshmallow</option>
+              <option>Macaron</option>
+              <option>Neon</option>
+              <option>Кристал</option>
+              <option>Натурал</option>
+              <option>Фолио</option>
+              <option>Ръчно изработен</option>
+              <option>Принтиран</option>
+              <option>Друго</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="fg">
+          <label>Gemar код (ако е Gemar балон)</label>
+          <input id="qa-gemar-code" placeholder="Напр. #091 · AB50 · G90..." style="font-family:monospace">
+        </div>
+
+        <div class="fg">
+          <label>Бележки</label>
+          <textarea id="qa-notes" rows="2" placeholder="Допълнителна информация, специфики, употреба..."></textarea>
+        </div>
+      </div>
+
+      <!-- РАЗМЕРИ -->
+      <div style="background:var(--card);border:1.5px solid var(--border);border-radius:var(--r);padding:20px;margin-bottom:14px">
+        <div style="font-size:12px;font-weight:700;color:var(--rose-d);text-transform:uppercase;letter-spacing:.08em;margin-bottom:14px">📐 Размери <span style="font-weight:400;color:var(--ink-l);text-transform:none;font-size:11px">(незадължително)</span></div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:10px">
+          <div class="fg" style="margin:0">
+            <label>Височина</label>
+            <div style="display:flex;gap:4px">
+              <input type="number" id="qa-h" min="0" step="0.1" placeholder="0" style="flex:1">
+              <select id="qa-h-unit" style="width:56px;padding:6px 4px;border:1.5px solid var(--border);border-radius:var(--r-sm);font-size:12px;background:var(--card);color:var(--ink)">
+                ${SIZE_UNITS.map(function(u){ return '<option>'+u+'</option>'; }).join('')}
+              </select>
+            </div>
+          </div>
+          <div class="fg" style="margin:0">
+            <label>Ширина</label>
+            <div style="display:flex;gap:4px">
+              <input type="number" id="qa-w" min="0" step="0.1" placeholder="0" style="flex:1">
+              <select id="qa-w-unit" style="width:56px;padding:6px 4px;border:1.5px solid var(--border);border-radius:var(--r-sm);font-size:12px;background:var(--card);color:var(--ink)">
+                ${SIZE_UNITS.map(function(u){ return '<option>'+u+'</option>'; }).join('')}
+              </select>
+            </div>
+          </div>
+          <div class="fg" style="margin:0">
+            <label>Дълбочина</label>
+            <div style="display:flex;gap:4px">
+              <input type="number" id="qa-d" min="0" step="0.1" placeholder="0" style="flex:1">
+              <select id="qa-d-unit" style="width:56px;padding:6px 4px;border:1.5px solid var(--border);border-radius:var(--r-sm);font-size:12px;background:var(--card);color:var(--ink)">
+                ${SIZE_UNITS.map(function(u){ return '<option>'+u+'</option>'; }).join('')}
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <div class="fr">
+          <div class="fg">
+            <label>Тежест</label>
+            <div style="display:flex;gap:6px">
+              <input type="number" id="qa-weight" min="0" step="0.01" placeholder="0" style="flex:1">
+              <select id="qa-weight-unit" style="width:60px;padding:8px 6px;border:1.5px solid var(--border);border-radius:var(--r-sm);font-size:13px;background:var(--card);color:var(--ink)">
+                ${WEIGHT_UNITS.map(function(u){ return '<option>'+u+'</option>'; }).join('')}
+              </select>
+            </div>
+          </div>
+          <div class="fg">
+            <label>Локация в склада</label>
+            <input id="qa-location" placeholder="Напр. Кутия А3 · Рафт 2 · Чекмедже розово">
+          </div>
+        </div>
+      </div>
+
+      <!-- ФИНАНСОВИ -->
+      <div style="background:var(--card);border:1.5px solid var(--border);border-radius:var(--r);padding:20px;margin-bottom:14px">
+        <div style="font-size:12px;font-weight:700;color:var(--rose-d);text-transform:uppercase;letter-spacing:.08em;margin-bottom:14px">💶 Цени <span style="font-weight:400;color:var(--ink-l);text-transform:none;font-size:11px">(незадължително)</span></div>
+
+        <div class="fr">
+          <div class="fg">
+            <label>Себестойност (€/бр)</label>
+            <input type="number" id="qa-cost" value="0" min="0" step="0.01" oninput="updateQAMargin()">
+          </div>
+          <div class="fg">
+            <label>Продажна цена (€/бр)</label>
+            <input type="number" id="qa-price" value="0" min="0" step="0.01" oninput="updateQAMargin()">
+          </div>
+        </div>
+
+        <div id="qa-margin-display" style="display:none;background:var(--bg);border-radius:var(--r-sm);padding:8px 12px;font-size:12px">
+          Марж: <strong id="qa-margin-val" style="color:var(--green)">0%</strong>
+          · Печалба/бр: <strong id="qa-profit-val" style="color:var(--green)">€0</strong>
+        </div>
+
+        <div class="fg" style="margin-top:10px">
+          <label>Снимка (URL)</label>
+          <input id="qa-image" placeholder="https://..." oninput="updateQAImagePreview()">
+          <div id="qa-img-preview" style="margin-top:6px"></div>
+        </div>
+      </div>
+
+      <!-- БУТОНИ -->
+      <div style="display:flex;gap:10px;margin-bottom:30px">
+        <button class="btn btn-secondary" onclick="go('inventory')" style="flex:1">Отказ</button>
+        <button class="btn btn-secondary" onclick="saveQuickAdd(false)" style="flex:1">💾 Запази и добави още</button>
+        <button class="btn btn-primary" onclick="saveQuickAdd(true)" style="flex:2">✅ Запази и виж инвентара</button>
+      </div>
+
+    </div>
+  </div>`;
+};
+
+function updateQAMargin() {
+  var cost  = +document.getElementById('qa-cost')?.value||0;
+  var price = +document.getElementById('qa-price')?.value||0;
+  var div   = document.getElementById('qa-margin-display');
+  var mval  = document.getElementById('qa-margin-val');
+  var pval  = document.getElementById('qa-profit-val');
+  if (!div) return;
+  if (cost > 0 || price > 0) {
+    div.style.display = 'block';
+    var margin = price>0&&cost>0 ? Math.round((1-cost/price)*100) : 0;
+    var profit = price - cost;
+    if (mval) { mval.textContent = margin+'%'; mval.style.color = margin>=50?'var(--green)':margin>=30?'var(--amber)':'var(--red)'; }
+    if (pval) { pval.textContent = '€'+profit.toFixed(2); pval.style.color = profit>=0?'var(--green)':'var(--red)'; }
+  } else {
+    div.style.display = 'none';
+  }
+}
+
+function updateQAImagePreview() {
+  var url  = document.getElementById('qa-image')?.value.trim();
+  var prev = document.getElementById('qa-img-preview');
+  if (!prev) return;
+  if (url) {
+    prev.innerHTML = '<img src="'+url+'" style="width:100%;max-height:160px;object-fit:cover;border-radius:var(--r-sm)" onerror="this.style.display=\'none\'">';
+  } else {
+    prev.innerHTML = '';
+  }
+}
+
+async function saveQuickAdd(navigateAfter) {
+  var name = document.getElementById('qa-name')?.value.trim();
+  if (!name) { toast('Въведи наименование', 'err'); return; }
+
+  var cat  = document.getElementById('qa-cat')?.value;
+  var qty  = +document.getElementById('qa-qty')?.value||0;
+  var unit = document.getElementById('qa-unit')?.value||'бр';
+
+  // Събираме размерите като notes допълнение
+  var h    = document.getElementById('qa-h')?.value;
+  var hu   = document.getElementById('qa-h-unit')?.value||'см';
+  var w    = document.getElementById('qa-w')?.value;
+  var wu   = document.getElementById('qa-w-unit')?.value||'см';
+  var d    = document.getElementById('qa-d')?.value;
+  var du   = document.getElementById('qa-d-unit')?.value||'см';
+  var wt   = document.getElementById('qa-weight')?.value;
+  var wtu  = document.getElementById('qa-weight-unit')?.value||'г';
+  var loc  = document.getElementById('qa-location')?.value.trim()||null;
+
+  var dims = [];
+  if (h) dims.push('В:'+h+hu);
+  if (w) dims.push('Ш:'+w+wu);
+  if (d) dims.push('Д:'+d+du);
+  if (wt) dims.push('Тегло:'+wt+wtu);
+  var dimsStr = dims.length > 0 ? ' · Размери: '+dims.join(' × ') : '';
+
+  var colorName  = document.getElementById('qa-color-name')?.value.trim()||null;
+  var series     = document.getElementById('qa-series')?.value||null;
+  var gemarCode  = document.getElementById('qa-gemar-code')?.value.trim()||null;
+  var baseNotes  = document.getElementById('qa-notes')?.value.trim()||'';
+  var extraNotes = [colorName?'Цвят: '+colorName:'', series?'Серия: '+series:'', gemarCode?'Gemar: '+gemarCode:'', dimsStr].filter(Boolean).join(' · ');
+  var finalNotes = [extraNotes, baseNotes].filter(Boolean).join('\n') || null;
+
+  var supId = document.getElementById('qa-supplier')?.value||null;
+  // Ако е текстов доставчик (temu/gemar...) → null за supplier_id
+  var knownSups = S.suppliers.map(function(s){return s.id;});
+  var supplierId = knownSups.includes(supId) ? supId : null;
+
+  // Намираме category_id по name
+  var catObj = S.categories.find(function(c){ return cat && c.name && cat.includes(c.name); });
+
+  var payload = {
+    name:         name,
+    quantity:     qty,
+    unit:         unit,
+    min_quantity: +document.getElementById('qa-min')?.value||0,
+    cost_price:   +document.getElementById('qa-cost')?.value||0,
+    price:        +document.getElementById('qa-price')?.value||0,
+    image_url:    document.getElementById('qa-image')?.value.trim()||null,
+    notes:        finalNotes,
+    location:     loc,
+    status:      'available',
+    supplier_id:  supplierId,
+    category_id:  catObj ? catObj.id : null,
+  };
+
+  try {
+    await db.from('products').insert(payload);
+    await dbLoad('products','products','name','*,categories(name,color),suppliers(name)');
+    toast('✅ '+name+' е добавен в инвентара!', 'ok');
+
+    if (navigateAfter) {
+      go('inventory');
+    } else {
+      // Изчистваме формата за следващ артикул
+      ['qa-name','qa-color-name','qa-gemar-code','qa-notes','qa-image',
+       'qa-h','qa-w','qa-d','qa-weight','qa-location'].forEach(function(id){
+        var el2 = document.getElementById(id);
+        if (el2) el2.value = '';
+      });
+      ['qa-qty','qa-min','qa-cost','qa-price'].forEach(function(id){
+        var el2 = document.getElementById(id);
+        if (el2) el2.value = id==='qa-qty'?'1':id==='qa-min'?'5':'0';
+      });
+      document.getElementById('qa-img-preview').innerHTML = '';
+      document.getElementById('qa-margin-display').style.display = 'none';
+      document.getElementById('qa-name').focus();
+      updateBadges();
+    }
+  } catch(e) {
+    console.error('saveQuickAdd error:', e);
+    toast('Грешка при запис: ' + (e.message||e), 'err');
+  }
+}
+
+console.log('✅ Бърза форма за артикул заредена!');
+</script>
+
+<script>
+'use strict';
+// ════════════════════════════════════════════
+// ТИПОВЕ АРТИКУЛИ — ИНВЕНТАР + ФИНАНСИ
+// ════════════════════════════════════════════
+
+var PRODUCT_TYPES = {
+  consumable:    { l:'🎈 Консуматив',        cls:'bd', color:'var(--ink-m)',  desc:'Изхабява се при използване (балони, лента...)' },
+  product:       { l:'🛍 Продукт',           cls:'bg', color:'var(--green)',  desc:'Продава се на клиент' },
+  asset:         { l:'🏛 Реквизит / Asset',  cls:'bb', color:'var(--blue)',   desc:'Многократна употреба (арки, маси, осветление)' },
+  rental:        { l:'🎭 За наем',           cls:'bm', color:'var(--purple)', desc:'Отдава се под наем (фигури, надписи)' },
+  asset_rental:  { l:'🏛🎭 Asset + Наем',   cls:'bw', color:'var(--amber)',  desc:'Многократен И под наем (покривала, арки)' },
+  raw_material:  { l:'🧪 Суровина',          cls:'bd', color:'var(--ink-l)',  desc:'За производство (восък, сапунена основа...)' },
+  handmade:      { l:'🌸 Handmade',          cls:'br', color:'var(--rose-d)', desc:'Ръчно изработен готов продукт' },
+};
+
+// ── Patch render_inventory да показва типове ────────────────
+var _origInventory = window.render_inventory;
+window.render_inventory = function(el) {
+  _origInventory(el);
+  // Добавяме филтър по тип след рендиране
+  setTimeout(function(){
+    var topbar = el.querySelector('.topbar');
+    if (!topbar || document.getElementById('inv-type-filter')) return;
+
+    var filterDiv = document.createElement('div');
+    filterDiv.id = 'inv-type-filter';
+    filterDiv.style.cssText = 'display:flex;gap:5px;flex-wrap:wrap;padding:8px 22px;background:var(--card);border-bottom:1.5px solid var(--border)';
+    filterDiv.innerHTML = '<button class="btn btn-sm on" id="ityp-all" onclick="filterInventoryByType(\'\')">Всички</button>' +
+      Object.entries(PRODUCT_TYPES).map(function(x){
+        var k=x[0], t=x[1];
+        var cnt = S.products.filter(function(p){ return (p.product_type||'consumable')===k; }).length;
+        if (cnt===0) return '';
+        return '<button class="btn btn-sm" id="ityp-'+k+'" onclick="filterInventoryByType(\''+k+'\')">'+t.l+' <span style="opacity:.6">'+cnt+'</span></button>';
+      }).join('');
+
+    topbar.parentNode.insertBefore(filterDiv, topbar.nextSibling);
+  }, 100);
+};
+
+var _currentTypeFilter = '';
+function filterInventoryByType(type) {
+  _currentTypeFilter = type;
+  document.querySelectorAll('[id^="ityp-"]').forEach(function(b){
+    b.className = 'btn btn-sm' + (b.id === 'ityp-'+(type||'all') ? ' on' : '');
+  });
+  // Филтрираме редовете в таблицата
+  var rows = document.querySelectorAll('#inventory-tbody tr, #inv-grid .inv-card');
+  rows.forEach(function(row){
+    if (!type) { row.style.display=''; return; }
+    var pt = row.dataset.productType || 'consumable';
+    row.style.display = pt === type ? '' : 'none';
+  });
+}
+
+// ── Patch openProductModal да включва тип ───────────────────
+var _origOpenProd = window.openProductModal;
+window.openProductModal = function(id) {
+  _origOpenProd && _origOpenProd(id);
+  setTimeout(function(){
+    var modal = document.getElementById('mod-product');
+    if (!modal || document.getElementById('mp-product-type')) return;
+
+    var p = id ? S.products.find(function(x){ return x.id===id; }) : null;
+    var curType = p ? (p.product_type||'consumable') : 'consumable';
+
+    // Намираме добро място да вмъкнем — след първия .fg
+    var firstFg = modal.querySelector('.fg');
+    if (!firstFg) return;
+
+    var typeDiv = document.createElement('div');
+    typeDiv.className = 'fg';
+    typeDiv.innerHTML =
+      '<label>Тип артикул</label>'+
+      '<select id="mp-product-type" style="width:100%;padding:9px 12px;border:1.5px solid var(--border);border-radius:var(--r-sm);font-size:13px;background:var(--card);color:var(--ink)" onchange="updateProductTypeHint(this.value)">'+
+        Object.entries(PRODUCT_TYPES).map(function(x){
+          return '<option value="'+x[0]+'"'+(curType===x[0]?' selected':'')+'>'+x[1].l+'</option>';
+        }).join('')+
+      '</select>'+
+      '<div id="mp-type-hint" style="font-size:10px;color:var(--ink-m);margin-top:4px">'+
+        (PRODUCT_TYPES[curType]?.desc||'')+
+      '</div>';
+
+    firstFg.parentNode.insertBefore(typeDiv, firstFg);
+
+    // Добавяме полета за asset
+    var formActions = modal.querySelector('.form-actions');
+    if (formActions && !document.getElementById('mp-max-uses')) {
+      var assetDiv = document.createElement('div');
+      assetDiv.className = 'fr';
+      assetDiv.id = 'mp-asset-fields';
+      assetDiv.style.display = ['asset','asset_rental','rental'].includes(curType) ? 'flex' : 'none';
+      assetDiv.innerHTML =
+        '<div class="fg"><label>Брой употреби</label><input type="number" id="mp-usage-count" value="'+(p?.usage_count||0)+'" min="0" readonly style="background:var(--bg)"></div>'+
+        '<div class="fg"><label>Макс. употреби (0=неогр.)</label><input type="number" id="mp-max-uses" value="'+(p?.max_uses||0)+'" min="0"></div>';
+      formActions.parentNode.insertBefore(assetDiv, formActions);
+    }
+  }, 80);
+};
+
+function updateProductTypeHint(val) {
+  var hint = document.getElementById('mp-type-hint');
+  if (hint) hint.textContent = PRODUCT_TYPES[val]?.desc||'';
+  var assetF = document.getElementById('mp-asset-fields');
+  if (assetF) assetF.style.display = ['asset','asset_rental','rental'].includes(val)?'flex':'none';
+}
+
+// Patch saveProduct да включва product_type
+var _origSaveProd = window.saveProduct;
+window.saveProduct = async function() {
+  var typeEl    = document.getElementById('mp-product-type');
+  var maxUsesEl = document.getElementById('mp-max-uses');
+
+  // Добавяме product_type към payload преди запис
+  var origFrom = db.from.bind(db);
+  var patched  = false;
+  db.from = function(table) {
+    var builder = origFrom(table);
+    if (table === 'products' && !patched) {
+      patched = true;
+      var origIns = builder.insert.bind(builder);
+      var origUpd = builder.update.bind(builder);
+      var extra   = {
+        product_type: typeEl ? typeEl.value : 'consumable',
+        max_uses:     maxUsesEl ? +maxUsesEl.value||0 : 0,
+      };
+      builder.insert = function(pl){ return origIns(Object.assign({}, pl, extra)); };
+      builder.update = function(pl){ return origUpd(Object.assign({}, pl, extra)); };
+    }
+    return builder;
+  };
+  await _origSaveProd();
+  db.from = origFrom;
+};
+
+// ════════════════════════════════════════════
+// СТОЙНОСТ НА ИНВЕНТАРА — ФИНАНСОВ ОТЧЕТ
+// ════════════════════════════════════════════
+
+// Добавяме в Отчети
+var _origReports2 = window.render_reports;
+window.render_reports = function(el) {
+  _origReports2(el);
+  setTimeout(function(){
+    var content = el.querySelector('.content');
+    if (!content || document.getElementById('inv-value-report')) return;
+
+    // Изчисляваме стойност по тип
+    var byType   = {};
+    var byTypeSell = {};
+    Object.keys(PRODUCT_TYPES).forEach(function(k){ byType[k]=0; byTypeSell[k]=0; });
+
+    var totalCost = 0, totalSell = 0;
+    S.products.forEach(function(p){
+      var t    = p.product_type||'consumable';
+      var cost = (p.cost_price||0) * (p.quantity||0);
+      var sell = (p.price||0)      * (p.quantity||0);
+      byType[t]     = (byType[t]||0)     + cost;
+      byTypeSell[t] = (byTypeSell[t]||0) + sell;
+      totalCost += cost;
+      totalSell += sell;
+    });
+
+    // По категории (top 8)
+    var byCat = {};
+    S.products.forEach(function(p){
+      var cn = p.categories?.name || 'Без категория';
+      if (!byCat[cn]) byCat[cn] = { cost:0, sell:0, cnt:0 };
+      byCat[cn].cost += (p.cost_price||0)*(p.quantity||0);
+      byCat[cn].sell += (p.price||0)*(p.quantity||0);
+      byCat[cn].cnt++;
+    });
+
+    var topCats = Object.entries(byCat)
+      .sort(function(a,b){ return b[1].cost - a[1].cost; })
+      .slice(0,10);
+
+    var div = document.createElement('div');
+    div.id  = 'inv-value-report';
+
+    div.innerHTML =
+      '<div class="table-wrap" style="margin-top:16px">'+
+        '<div class="table-hdr"><h3>📦 Стойност на инвентара</h3>'+
+          '<div style="font-size:12px;color:var(--ink-m)">Себестойност × налично количество</div>'+
+        '</div>'+
+        '<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;padding:14px">'+
+
+          // По тип
+          '<div>'+
+            '<div style="font-size:11px;font-weight:700;color:var(--ink-l);text-transform:uppercase;margin-bottom:10px">По тип артикул</div>'+
+            Object.entries(PRODUCT_TYPES).map(function(x){
+              var k=x[0], t=x[1];
+              var cost = byType[k]||0;
+              var sell = byTypeSell[k]||0;
+              if (cost===0&&sell===0) return '';
+              var pct  = totalCost>0 ? Math.round(cost/totalCost*100) : 0;
+              return '<div style="display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid var(--border)">'+
+                '<span class="badge '+t.cls+'" style="min-width:130px">'+t.l+'</span>'+
+                '<div style="flex:1">'+
+                  '<div style="height:5px;background:var(--border);border-radius:3px;overflow:hidden">'+
+                    '<div style="height:100%;width:'+pct+'%;background:'+t.color+';border-radius:3px"></div>'+
+                  '</div>'+
+                '</div>'+
+                '<div style="text-align:right;min-width:80px">'+
+                  '<div style="font-size:12px;font-weight:700">'+eur0(cost)+'</div>'+
+                  (sell>0?'<div style="font-size:9px;color:var(--green)">продажна: '+eur0(sell)+'</div>':'')+
+                '</div>'+
+              '</div>';
+            }).join('')+
+            '<div style="display:flex;justify-content:space-between;padding:10px 0;margin-top:4px;border-top:2px solid var(--border)">'+
+              '<strong>ОБЩО себестойност:</strong>'+
+              '<strong style="font-size:16px;color:var(--rose-d)">'+eur0(totalCost)+'</strong>'+
+            '</div>'+
+            '<div style="display:flex;justify-content:space-between;padding-bottom:4px">'+
+              '<span style="font-size:12px;color:var(--ink-m)">Продажна стойност:</span>'+
+              '<span style="font-size:14px;font-weight:700;color:var(--green)">'+eur0(totalSell)+'</span>'+
+            '</div>'+
+            (totalSell>totalCost?'<div style="font-size:11px;color:var(--green)">Потенциална печалба: '+eur0(totalSell-totalCost)+'</div>':'')+
+          '</div>'+
+
+          // По категория
+          '<div>'+
+            '<div style="font-size:11px;font-weight:700;color:var(--ink-l);text-transform:uppercase;margin-bottom:10px">По категория (топ 10)</div>'+
+            topCats.map(function(x){
+              var cn=x[0], v=x[1];
+              var pct = totalCost>0 ? Math.round(v.cost/totalCost*100) : 0;
+              return '<div style="padding:6px 0;border-bottom:1px solid var(--border)">'+
+                '<div style="display:flex;justify-content:space-between;margin-bottom:3px">'+
+                  '<span style="font-size:12px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:180px">'+cn+'</span>'+
+                  '<span style="font-size:12px;font-weight:700;flex-shrink:0">'+eur0(v.cost)+'</span>'+
+                '</div>'+
+                '<div style="height:4px;background:var(--border);border-radius:2px;overflow:hidden">'+
+                  '<div style="height:100%;width:'+pct+'%;background:var(--rose);border-radius:2px"></div>'+
+                '</div>'+
+                '<div style="font-size:9px;color:var(--ink-l);margin-top:2px">'+v.cnt+' арт. · '+pct+'%</div>'+
+              '</div>';
+            }).join('')+
+          '</div>'+
+
+        '</div>'+
+
+        // Детайлна таблица
+        '<div style="padding:0 14px 14px">'+
+          '<div style="font-size:11px;font-weight:700;color:var(--ink-l);text-transform:uppercase;margin-bottom:8px">Детайлно — с нулева наличност</div>'+
+          '<table><thead><tr>'+
+            '<th>Артикул</th><th>Тип</th><th>Налично</th><th>Себестойност/бр</th><th>Обща стойност</th><th>Продажна</th>'+
+          '</tr></thead><tbody>'+
+          S.products
+            .filter(function(p){ return (p.cost_price||0)>0||(p.price||0)>0; })
+            .sort(function(a,b){ return ((b.cost_price||0)*(b.quantity||0)) - ((a.cost_price||0)*(a.quantity||0)); })
+            .slice(0,30)
+            .map(function(p){
+              var t   = PRODUCT_TYPES[p.product_type||'consumable']||PRODUCT_TYPES.consumable;
+              var tot = (p.cost_price||0)*(p.quantity||0);
+              var sel = (p.price||0)*(p.quantity||0);
+              return '<tr>'+
+                '<td><strong>'+p.name+'</strong>'+(p.categories?.name?'<div style="font-size:10px;color:var(--ink-l)">'+p.categories.name+'</div>':'')+' </td>'+
+                '<td><span class="badge '+t.cls+'">'+t.l+'</span></td>'+
+                '<td style="font-weight:700;color:'+(p.quantity===0?'var(--red)':p.quantity<=(p.min_quantity||0)?'var(--amber)':'inherit')+'">'+p.quantity+' '+(p.unit||'бр')+'</td>'+
+                '<td>'+eur(p.cost_price||0)+'</td>'+
+                '<td style="font-weight:700;color:var(--rose-d)">'+eur0(tot)+'</td>'+
+                '<td style="color:var(--green)">'+eur0(sel)+'</td>'+
+              '</tr>';
+            }).join('')+
+          '</tbody></table>'+
+        '</div>'+
+      '</div>';
+
+    content.appendChild(div);
+  }, 200);
+};
+
+// ════════════════════════════════════════════
+// АВТОМАТИЧНО НАМАЛЯВАНЕ НА КОНСУМАТИВИ
+// ════════════════════════════════════════════
+
+// При приключване на оферта → намаляваме консумативите
+var _origComplete2 = window.completeEvent;
+window.completeEvent = async function(qid) {
+  // Намаляваме консумативите от офертата
+  var q = S.quotes.find(function(x){ return x.id===qid; });
+  if (q && q.quote_items && q.quote_items.length) {
+    for (var item of q.quote_items) {
+      var p = S.products.find(function(pr){ return pr.id===item.product_id; });
+      if (!p) continue;
+      var pt = p.product_type||'consumable';
+      if (pt === 'consumable' || pt === 'handmade') {
+        // Намаляваме количеството
+        var newQty = Math.max(0, (p.quantity||0) - (item.quantity||0));
+        await db.from('products').update({ quantity: newQty }).eq('id', p.id);
+      } else if (pt === 'asset' || pt === 'asset_rental' || pt === 'rental') {
+        // Увеличаваме usage_count
+        await db.from('products').update({
+          usage_count: (p.usage_count||0) + 1
+        }).eq('id', p.id);
+        // Предупреждение ако достигне макс
+        if (p.max_uses > 0 && (p.usage_count||0)+1 >= p.max_uses) {
+          toast('⚠️ '+p.name+' достигна максималния брой употреби!', 'err');
+        }
+      }
+    }
+    await dbLoad('products','products','name','*,categories(name,color),suppliers(name)');
+  }
+  // Извикваме оригиналния
+  if (_origComplete2) return _origComplete2(qid);
+};
+
+// ════════════════════════════════════════════
+// BADGE В QUICK ADD ФОРМА — добавяме типа
+// ════════════════════════════════════════════
+var _origSaveQA = window.saveQuickAdd;
+window.saveQuickAdd = async function(nav) {
+  // Добавяме product_type към payload
+  var typeEl = document.getElementById('qa-prod-type');
+  if (!typeEl) {
+    // Добавяме поле ако липсва
+    var priceEl = document.getElementById('qa-cost');
+    if (priceEl) {
+      var parent = priceEl.closest('.fr') || priceEl.parentNode.parentNode;
+      if (parent && !document.getElementById('qa-prod-type-wrap')) {
+        var wrap = document.createElement('div');
+        wrap.id = 'qa-prod-type-wrap';
+        wrap.className = 'fg';
+        wrap.innerHTML = '<label>Тип артикул</label><select id="qa-prod-type">'+
+          Object.entries(PRODUCT_TYPES).map(function(x){ return '<option value="'+x[0]+'">'+x[1].l+'</option>'; }).join('')+
+        '</select>';
+        parent.parentNode.insertBefore(wrap, parent);
+      }
+    }
+  }
+
+  var origFrom = db.from.bind(db);
+  var done = false;
+  db.from = function(t) {
+    var b = origFrom(t);
+    if (t==='products' && !done) {
+      done = true;
+      var ptVal = document.getElementById('qa-prod-type')?.value || 'consumable';
+      var origI = b.insert.bind(b);
+      b.insert = function(pl){ return origI(Object.assign({}, pl, { product_type: ptVal })); };
+    }
+    return b;
+  };
+  await _origSaveQA(nav);
+  db.from = origFrom;
+};
+
+// Добавяме типа в Quick Add рендирането
+var _origRenderQA = window.render_quickAdd;
+window.render_quickAdd = function(el) {
+  _origRenderQA(el);
+  // Добавяме тип поле преди Цени секцията
+  setTimeout(function(){
+    var priceCard = el.querySelectorAll('[style*="background:var(--card)"]');
+    var lastCard  = priceCard[priceCard.length-1];
+    if (!lastCard || document.getElementById('qa-type-card')) return;
+
+    var typeCard = document.createElement('div');
+    typeCard.id  = 'qa-type-card';
+    typeCard.style.cssText = 'background:var(--card);border:1.5px solid var(--border);border-radius:var(--r);padding:20px;margin-bottom:14px';
+    typeCard.innerHTML =
+      '<div style="font-size:12px;font-weight:700;color:var(--rose-d);text-transform:uppercase;letter-spacing:.08em;margin-bottom:14px">🏷 Тип артикул</div>'+
+      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px" id="qa-type-grid">'+
+        Object.entries(PRODUCT_TYPES).map(function(x){
+          var k=x[0], t=x[1];
+          var isDefault = k==='consumable';
+          return '<div onclick="selectQAType(\''+k+'\')" id="qatype-'+k+'" '+
+            'style="padding:10px 12px;border-radius:var(--r-sm);border:1.5px solid '+(isDefault?'var(--rose)':'var(--border)')+';background:'+(isDefault?'var(--rose-l)':'var(--card)')+';cursor:pointer;transition:.15s">'+
+            '<div style="font-size:13px;font-weight:700">'+t.l+'</div>'+
+            '<div style="font-size:10px;color:var(--ink-m);margin-top:2px">'+t.desc+'</div>'+
+          '</div>';
+        }).join('')+
+      '</div>'+
+      '<input type="hidden" id="qa-prod-type" value="consumable">';
+
+    lastCard.parentNode.insertBefore(typeCard, lastCard);
+  }, 100);
+};
+
+window.selectQAType = function(val) {
+  document.querySelectorAll('[id^="qatype-"]').forEach(function(d){
+    var isOn = d.id === 'qatype-'+val;
+    d.style.borderColor = isOn ? 'var(--rose)' : 'var(--border)';
+    d.style.background  = isOn ? 'var(--rose-l)' : 'var(--card)';
+  });
+  var inp = document.getElementById('qa-prod-type');
+  if (inp) inp.value = val;
+};
+
+console.log('✅ Типове артикули + Инвентар стойност + Автоматични движения заредени!');
+</script>
