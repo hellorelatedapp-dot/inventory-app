@@ -11029,3 +11029,161 @@ window.handleGemarExcelImport = async function(file) {
 
 console.log('✅ Gemar директен импорт v2 зареден');
 </script>
+
+<script>
+'use strict';
+// ════════════════════════════════════════════
+// GEMAR ИМПОРТ v3 — с точна структура
+// ════════════════════════════════════════════
+window.handleGemarExcelImport = async function(file) {
+  var statusEl = document.getElementById('temu-status');
+  var textEl   = document.getElementById('temu-status-text');
+  function setStatus(msg, type) {
+    if (statusEl) { statusEl.style.display='flex'; statusEl.className='alert '+(type||'blue'); }
+    if (textEl) textEl.textContent = msg;
+  }
+  setStatus('📊 Зареждам...', 'blue');
+  try {
+    if (typeof XLSX === 'undefined') {
+      await new Promise(function(res,rej){
+        var s=document.createElement('script');
+        s.src='https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+        s.onload=res; s.onerror=rej; document.head.appendChild(s);
+      });
+    }
+    var buf = await file.arrayBuffer();
+    var wb  = XLSX.read(new Uint8Array(buf), {type:'array'});
+
+    // Намираме листа с инвентара
+    var sheetName = wb.SheetNames.find(function(n){
+      return n.includes('Инвентар') || n.includes('инвент');
+    }) || wb.SheetNames[1] || wb.SheetNames[0];
+    console.log('Лист:', sheetName);
+
+    var ws   = wb.Sheets[sheetName];
+    var rows = XLSX.utils.sheet_to_json(ws, {header:1, defval:''});
+    console.log('Редове:', rows.length, '| Ред 0:', rows[0]);
+    console.log('Ред 1:', rows[1]);
+
+    // Намираме хедър — търсим ред с "Артикул" И "Налично"
+    var hdr = -1;
+    for (var i=0; i<Math.min(rows.length,6); i++) {
+      var r = rows[i];
+      var hasArt = r.some(function(c){ return String(c).trim()==='Артикул'; });
+      var hasQty = r.some(function(c){ return String(c).includes('Налично') || String(c).includes('⭐'); });
+      if (hasArt && hasQty) { hdr=i; break; }
+      // Ако само Артикул
+      if (hasArt) { hdr=i; break; }
+    }
+    if (hdr<0) hdr=1; // Нашият файл: хедър е ред 2 (индекс 1)
+    console.log('Хедър ред (0-индекс):', hdr, rows[hdr]);
+
+    var hdrs = rows[hdr].map(function(c){ return String(c||'').trim(); });
+
+    // Точни имена от нашия Excel
+    var cLinia = hdrs.indexOf('Линия');
+    var cKod   = hdrs.indexOf('Код #');
+    var cColor = hdrs.indexOf('Цвят (BG / EN)');
+    var cArt   = hdrs.indexOf('Артикул');
+    var cSize  = hdrs.indexOf('Размер');
+    var cPrice = hdrs.indexOf('Цена/бр €');
+    var cQty   = hdrs.findIndex(function(h){ return h.includes('Налично') || h.includes('⭐'); });
+    var cMin   = hdrs.indexOf('Минимум');
+
+    // Ако точните не намерени — пробваме частично
+    if (cArt<0) cArt = hdrs.findIndex(function(h){ return h.includes('Артик'); });
+    if (cQty<0) cQty = hdrs.findIndex(function(h){ return h.includes('Налич'); });
+
+    console.log('Колони:', {cLinia,cKod,cColor,cArt,cSize,cPrice,cQty,cMin});
+
+    if (cArt<0 || cQty<0) {
+      throw new Error('Не намерих колоните. Хедър: ' + JSON.stringify(hdrs));
+    }
+
+    var toInsert = [];
+    for (var j=hdr+1; j<rows.length; j++) {
+      var row = rows[j];
+      if (!row || !row[cArt]) continue;
+      var art = String(row[cArt]||'').trim();
+      if (!art) continue;
+
+      var qtyRaw = row[cQty];
+      var qty = typeof qtyRaw==='number' ? qtyRaw : parseFloat(String(qtyRaw||'').replace(',','.'));
+      if (!qty || qty<=0 || isNaN(qty)) continue;
+
+      var linia = cLinia>=0 ? String(row[cLinia]||'').trim() : '';
+      var kod   = cKod>=0   ? String(row[cKod]||'').trim()   : '';
+      var color = cColor>=0 ? String(row[cColor]||'').split('/')[0].trim() : '';
+      var size  = cSize>=0  ? String(row[cSize]||'').trim()  : '';
+      var price = cPrice>=0 ? (typeof row[cPrice]==='number' ? row[cPrice] : parseFloat(String(row[cPrice]||'0').replace(',','.'))) : 0;
+      var minQ  = cMin>=0   ? (typeof row[cMin]==='number'   ? row[cMin]   : parseFloat(String(row[cMin]||'10'))) : 10;
+
+      // Наименование
+      var parts = [art];
+      if (kod)   parts.push(kod);
+      if (color && color!=='Асорти') parts.push(color);
+      if (size)  parts.push(size);
+      var name = parts.join(' · ');
+
+      toInsert.push({
+        name:         name,
+        quantity:     Math.round(qty),
+        unit:         'бр',
+        price:        price||0,
+        cost_price:   price||0,
+        min_quantity: Math.round(minQ)||10,
+        status:       'available',
+        product_type: 'consumable',
+        notes:        linia ? 'Серия: '+linia : null,
+        location:     'Склад',
+      });
+    }
+
+    console.log('За запис:', toInsert.length, 'артикула');
+    console.log('Пример:', toInsert[0]);
+
+    if (!toInsert.length) {
+      throw new Error('Няма артикули с Налично > 0. Попълни колона "⭐ Налично" в Excel-а!');
+    }
+
+    // Записваме на партиди от 50
+    setStatus('💾 Записвам '+toInsert.length+' артикула...', 'blue');
+    var added=0, errs=0;
+    var BATCH=50;
+    for (var s=0; s<toInsert.length; s+=BATCH) {
+      var batch = toInsert.slice(s, s+BATCH);
+      var res   = await db.from('products').insert(batch);
+      if (res.error) {
+        console.warn('Batch грешка:', res.error.message);
+        // Опитваме един по един
+        for (var b=0; b<batch.length; b++) {
+          var r2 = await db.from('products').insert(batch[b]);
+          if (r2.error) { console.error('Skip:', batch[b].name, r2.error.message); errs++; }
+          else added++;
+        }
+      } else {
+        added += batch.length;
+      }
+      setStatus('💾 Записано '+Math.min(s+BATCH,toInsert.length)+'/'+toInsert.length+'...','blue');
+    }
+
+    // Презареждаме
+    var reload = await db.from('products')
+      .select('*,categories(name,color),suppliers(name)')
+      .order('name',{ascending:true}).limit(5000);
+    S.products = reload.data||[];
+    console.log('Продукти в S след импорт:', S.products.length);
+
+    setStatus('✅ Добавени: '+added+(errs?' · Пропуснати: '+errs:''), 'green');
+    toast('🌿 Gemar: '+added+' артикула добавени!', 'ok');
+    updateBadges();
+    setTimeout(function(){ go('inventory'); }, 800);
+
+  } catch(e) {
+    console.error('Gemar v3 грешка:', e);
+    setStatus('❌ '+e.message, 'red');
+    toast('Грешка: '+e.message, 'err');
+  }
+};
+console.log('✅ Gemar v3 зареден');
+</script>
