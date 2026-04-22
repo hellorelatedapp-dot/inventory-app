@@ -9595,3 +9595,348 @@ window.render_dashboard = function(el) {
 
 console.log('✅ Поправки v2 заредени: BG дати · 24ч · Dashboard · Препоръчан от · Temu PDF');
 </script>
+
+<script>
+'use strict';
+// ════════════════════════════════════════════
+// ФИНАЛНИ ПОПРАВКИ v3
+// ════════════════════════════════════════════
+
+// ── 1. Премахваме грешните patch на render_dashboard ─────────
+// (предишните patch-ове презаписваха правилната функция)
+// Просто добавяме BG дати към съществуващия dashboard
+
+// ── 2. BG Формат на дата DD/MM/YYYY ──────────────────────────
+function formatDateBG(dateStr) {
+  if (!dateStr) return '—';
+  var d = new Date(dateStr + 'T00:00:00');
+  if (isNaN(d)) return dateStr;
+  var dd = String(d.getDate()).padStart(2,'0');
+  var mm = String(d.getMonth()+1).padStart(2,'0');
+  var yyyy = d.getFullYear();
+  return dd + '/' + mm + '/' + yyyy;
+}
+
+function formatTimeBG(timeStr) {
+  if (!timeStr) return '';
+  var parts = timeStr.split(':');
+  return parts[0].padStart(2,'0') + ':' + (parts[1]||'00').padStart(2,'0');
+}
+
+// ── 3. Клиенти — запази и покажи правилно ───────────────────
+var _sc2 = window.saveClient;
+window.saveClient = async function() {
+  var name = document.getElementById('mcl-name')?.value.trim();
+  if (!name) { toast('Въведи имeто на клиента', 'err'); return; }
+  var payload = {
+    name:              name,
+    phone:             document.getElementById('mcl-phone')?.value.trim() || null,
+    email:             document.getElementById('mcl-email')?.value.trim() || null,
+    birthday:          document.getElementById('mcl-bday')?.value || null,
+    how_found:         document.getElementById('mcl-found')?.value || null,
+    preferred_contact: document.getElementById('mcl-contact')?.value || 'whatsapp',
+    style_pref:        document.getElementById('mcl-style')?.value || null,
+    budget_range:      document.getElementById('mcl-budget')?.value || null,
+    rating:           +document.getElementById('mcl-rating')?.value || 5,
+    is_vip:            document.getElementById('mcl-vip')?.checked || false,
+    notes:             document.getElementById('mcl-notes')?.value.trim() || null,
+    family_members:    (typeof familyRows !== 'undefined' ? familyRows.filter(function(f){return f.name;}) : [])
+  };
+
+  // Referred by
+  var foundVal = document.getElementById('mcl-found')?.value;
+  var refId    = document.getElementById('mcl-referred-by')?.value || null;
+  if (foundVal === 'Препоръка' && refId) payload.referred_by = refId;
+
+  try {
+    if (editId.client) {
+      await db.from('clients').update(payload).eq('id', editId.client);
+    } else {
+      await db.from('clients').insert(payload);
+      // Обновяваме referral_count
+      if (foundVal === 'Препоръка' && refId) {
+        var ref = S.clients.find(function(c){ return c.id===refId; });
+        if (ref) await db.from('clients').update({ referral_count:(ref.referral_count||0)+1 }).eq('id',refId);
+      }
+    }
+    await dbLoad('clients','clients','name');
+    cm('mod-client');
+    toast(editId.client ? 'Клиентът е обновен ✅' : 'Клиентът е добавен ✅', 'ok');
+    // Навигираме към клиенти за да се вижда
+    go('clients');
+  } catch(e) {
+    console.error('saveClient error:', e);
+    toast('Грешка при запис: ' + (e.message||e), 'err');
+  }
+};
+
+// ── 4. Препоръчан от toggle ───────────────────────────────────
+window.toggleReferredBy = function(val) {
+  var wrap = document.getElementById('mcl-referred-wrap');
+  if (!wrap) return;
+  wrap.style.display = val === 'Препоръка' ? 'block' : 'none';
+  if (val === 'Препоръка') {
+    var sel = document.getElementById('mcl-referred-by');
+    if (!sel) return;
+    sel.innerHTML = '<option value="">— Избери клиент —</option>' +
+      S.clients
+        .filter(function(c){ return c.id !== editId.client; })
+        .sort(function(a,b){ return (a.name||'').localeCompare(b.name||'','bg'); })
+        .map(function(c){ return '<option value="'+c.id+'">'+c.name+(c.phone?' · '+c.phone:'')+'</option>'; })
+        .join('');
+  }
+};
+
+// ── 5. Нов клиент от "Препоръчан от" поле ────────────────────
+window.openNewClientFromReferral = function() {
+  // Запазваме текущите данни временно
+  var tempData = {
+    name:    document.getElementById('mcl-name')?.value,
+    phone:   document.getElementById('mcl-phone')?.value,
+    email:   document.getElementById('mcl-email')?.value,
+    found:   document.getElementById('mcl-found')?.value,
+  };
+  window._tempClientData = tempData;
+
+  // Затваряме текущия modal
+  cm('mod-client');
+
+  // Отваряме нов за референта
+  setTimeout(function(){
+    openClientModal();
+    // Маркираме да се върнем
+    window._afterNewClientCallback = function() {
+      // Отваряме оригиналния modal с данните
+      setTimeout(function(){
+        buildClientModal();
+        if (tempData.name) document.getElementById('mcl-name').value = tempData.name;
+        if (tempData.phone) document.getElementById('mcl-phone').value = tempData.phone;
+        if (tempData.email) document.getElementById('mcl-email').value = tempData.email;
+        if (tempData.found) { document.getElementById('mcl-found').value = tempData.found; toggleReferredBy(tempData.found); }
+        om('mod-client');
+        window._afterNewClientCallback = null;
+        window._tempClientData = null;
+      }, 300);
+    };
+    toast('Добави новия клиент и запази 🌸', 'ok');
+  }, 200);
+};
+
+// Patch saveClient да извиква callback след нов клиент
+var _sc3 = window.saveClient;
+window.saveClient = async function() {
+  await _sc3();
+  if (window._afterNewClientCallback) {
+    window._afterNewClientCallback();
+  }
+};
+
+// ── 6. Поправка на "Нов клиент" бутон в modal ────────────────
+// Patch buildClientModal да сложи правилен onclick
+var _origBCM = window.buildClientModal;
+if (typeof buildClientModal === 'function') {
+  window.buildClientModal = function() {
+    _origBCM();
+    // Намираме бутона и поправяме onclick
+    setTimeout(function(){
+      var btns = document.querySelectorAll('#mod-client .btn');
+      btns.forEach(function(btn){
+        if (btn.textContent && btn.textContent.includes('Нов клиент')) {
+          btn.onclick = function(){ openNewClientFromReferral(); };
+        }
+      });
+    }, 50);
+  };
+}
+
+// ── 7. Dashboard — поправяме датите да са DD/MM/YYYY ─────────
+var _origDash3 = window.render_dashboard;
+window.render_dashboard = function(el) {
+  _origDash3(el);
+  // След рендиране поправяме датите в таблицата
+  setTimeout(function(){
+    // Намираме всички дати в формат YYYY-MM-DD и ги форматираме
+    var cells = el.querySelectorAll('td, div');
+    cells.forEach(function(cell){
+      var txt = cell.textContent || '';
+      if (/^\d{4}-\d{2}-\d{2}$/.test(txt.trim())) {
+        cell.textContent = formatDateBG(txt.trim());
+      }
+    });
+  }, 150);
+};
+
+// ── 8. Gemar Excel импорт ─────────────────────────────────────
+window.handleGemarExcelImport = async function(file) {
+  var status = document.getElementById('temu-status');
+  var statusText = document.getElementById('temu-status-text');
+  if (status) { status.style.display='flex'; status.className='alert blue'; }
+  if (statusText) statusText.textContent = '📊 Чета Gemar Excel...';
+
+  try {
+    var arrayBuffer = await file.arrayBuffer();
+    var data = new Uint8Array(arrayBuffer);
+
+    // Използваме SheetJS ако е наличен
+    if (typeof XLSX === 'undefined') {
+      // Зареждаме SheetJS динамично
+      await new Promise(function(resolve, reject){
+        var script = document.createElement('script');
+        script.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+        script.onload = resolve;
+        script.onerror = reject;
+        document.head.appendChild(script);
+      });
+    }
+
+    var workbook = XLSX.read(data, { type: 'array' });
+    // Търсим лист "Моят Инвентар"
+    var sheetName = workbook.SheetNames.find(function(n){
+      return n.toLowerCase().includes('инвент') || n.toLowerCase().includes('inventar');
+    }) || workbook.SheetNames[1] || workbook.SheetNames[0];
+
+    var sheet = workbook.Sheets[sheetName];
+    var rows  = XLSX.utils.sheet_to_json(sheet, { header:1, defval:'' });
+
+    // Намираме header row (търсим "Налично" или "Артикул")
+    var headerRow = -1;
+    for (var i=0; i<Math.min(rows.length,10); i++) {
+      var r = rows[i];
+      if (r.some(function(c){ return String(c).toLowerCase().includes('налич') || String(c).toLowerCase().includes('арти'); })) {
+        headerRow = i; break;
+      }
+    }
+    if (headerRow < 0) { throw new Error('Не намерих хедър ред в Excel файла'); }
+
+    var headers = rows[headerRow].map(function(h){ return String(h).trim().toLowerCase(); });
+    var colLine   = headers.findIndex(function(h){ return h.includes('лини'); });
+    var colCode   = headers.findIndex(function(h){ return h.includes('код'); });
+    var colColor  = headers.findIndex(function(h){ return h.includes('цвят') && !h.includes('hex') && !h.includes('◼'); });
+    var colArt    = headers.findIndex(function(h){ return h.includes('артик'); });
+    var colSize   = headers.findIndex(function(h){ return h.includes('разм'); });
+    var colPrice  = headers.findIndex(function(h){ return h.includes('цена') && h.includes('бр'); });
+    var colQty    = headers.findIndex(function(h){ return h.includes('налич') || h.includes('⭐'); });
+
+    var items = [];
+    for (var j=headerRow+1; j<rows.length; j++) {
+      var row = rows[j];
+      if (!row || !row[colArt]) continue;
+      var artVal = String(row[colArt]||'').trim();
+      if (!artVal || artVal.toLowerCase().includes('арти')) continue;
+
+      var qty = parseFloat(String(row[colQty]||'0').replace(',','.')) || 0;
+      if (qty <= 0) continue; // Само с налични бройки
+
+      var colorVal = colColor>=0 ? String(row[colColor]||'').split('/')[0].trim() : '';
+      var codeVal  = colCode>=0  ? String(row[colCode]||'').trim() : '';
+      var lineVal  = colLine>=0  ? String(row[colLine]||'').trim() : 'Gemar';
+      var priceVal = colPrice>=0 ? parseFloat(String(row[colPrice]||'0').replace(',','.')) || 0 : 0;
+      var sizeVal  = colSize>=0  ? String(row[colSize]||'').trim() : '';
+
+      var name = [artVal, codeVal, colorVal, sizeVal].filter(Boolean).join(' · ');
+
+      items.push({
+        _id:        'gemar_'+j,
+        _selected:  true,
+        name:       name,
+        quantity:   qty,
+        unit:       'бр',
+        price_eur:  priceVal,
+        category:   'Балони · ' + lineVal,
+        supplier:   'Gemar / Ukrasi.com',
+        image_url:  '',
+        name_original: name,
+        order_date: new Date().toISOString().slice(0,10),
+      });
+    }
+
+    if (items.length === 0) {
+      throw new Error('Не намерих артикули с налично > 0. Попълни колоната "⭐ Налично" в Excel-а.');
+    }
+
+    window.importItems = items;
+    if (status) status.className = 'alert green';
+    if (statusText) statusText.textContent = '✅ Намерих ' + items.length + ' артикула с налични бройки!';
+    if (typeof renderImportResults === 'function') renderImportResults(file.name);
+    toast('Gemar импорт: ' + items.length + ' артикула ✅', 'ok');
+
+  } catch(e) {
+    console.error('Gemar import error:', e);
+    if (status) status.className = 'alert red';
+    if (statusText) statusText.textContent = '❌ ' + e.message;
+    toast('Грешка: ' + e.message, 'err');
+  }
+};
+
+// ── 9. Добавяме Gemar импорт бутон в импорт страницата ───────
+var _origImport = window.render_import;
+window.render_import = function(el) {
+  _origImport(el);
+  // Добавяме Gemar секция след основните карти
+  setTimeout(function(){
+    var content = el.querySelector('.content');
+    if (!content) return;
+    if (document.getElementById('gemar-import-card')) return;
+
+    var div = document.createElement('div');
+    div.id = 'gemar-import-card';
+    div.style.cssText = 'background:var(--green-l);border:1.5px solid color-mix(in srgb,var(--green) 30%,transparent);border-radius:var(--r);padding:20px;margin-bottom:14px';
+    div.innerHTML =
+      '<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">'+
+        '<div style="width:40px;height:40px;background:var(--green);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0">🌿</div>'+
+        '<div><div style="font-size:15px;font-weight:700">Gemar инвентар (Excel)</div>'+
+        '<div style="font-size:11px;color:var(--ink-m)">Качи попълнения Gemar_2026_EleyaDecor.xlsx</div></div>'+
+      '</div>'+
+      '<p style="font-size:12px;color:var(--ink-m);margin-bottom:12px;line-height:1.6">'+
+        'Качи Excel файла с попълнени количества в колона "⭐ Налично". '+
+        'Само артикулите с количество > 0 ще бъдат импортирани.'+
+      '</p>'+
+      '<div id="gemar-drop" '+
+        'ondragover="event.preventDefault();this.style.borderColor=\'var(--green)\'" '+
+        'ondragleave="this.style.borderColor=\'var(--border)\'" '+
+        'ondrop="event.preventDefault();handleGemarExcelImport(event.dataTransfer.files[0])" '+
+        'style="border:2px dashed var(--border);border-radius:var(--r-sm);padding:20px;text-align:center;cursor:pointer" '+
+        'onclick="document.getElementById(\'gemar-file-input\').click()">'+
+        '<div style="font-size:28px;margin-bottom:6px">📊</div>'+
+        '<div style="font-size:13px;font-weight:600;color:var(--ink-m)">Плъзни Gemar Excel тук</div>'+
+        '<div style="font-size:11px;color:var(--ink-l);margin-top:3px">или кликни за избор</div>'+
+        '<input type="file" id="gemar-file-input" accept=".xlsx,.xls" style="display:none" onchange="handleGemarExcelImport(this.files[0])">'+
+      '</div>';
+
+    // Добавяме преди импорт резултатите
+    var resultsEl = document.getElementById('import-results');
+    if (resultsEl) content.insertBefore(div, resultsEl);
+    else content.insertBefore(div, content.firstChild);
+  }, 100);
+};
+
+// ── 10. Temu — показваме ръчен import като алтернатива ───────
+// Patch temu-drop да показва полезно съобщение
+var _origHandleTemuFile = window.handleTemuFile;
+window.handleTemuFile = function(input) {
+  var file = input.files[0];
+  if (!file) return;
+  // Показваме съвет за ръчен импорт
+  toast('💡 Ако PDF не работи — копирай текста от PDF и постави в "Ръчен текстов импорт"', 'ok');
+  if (typeof _origHandleTemuFile === 'function') _origHandleTemuFile(input);
+};
+
+// ── 11. Дати в quote таблицата → DD/MM/YYYY ─────────────────
+// Patch eur0 hint за дати
+var _origRenderQuotes = window.render_quotes;
+if (typeof render_quotes === 'function') {
+  window.render_quotes = function(el) {
+    _origRenderQuotes(el);
+    setTimeout(function(){
+      el.querySelectorAll('td').forEach(function(td){
+        var t = td.textContent.trim();
+        if (/^\d{4}-\d{2}-\d{2}$/.test(t)) {
+          td.textContent = formatDateBG(t);
+        }
+      });
+    }, 100);
+  };
+}
+
+console.log('✅ Финални поправки v3: Клиенти · Dashboard · Gemar Excel · Дати BG · Препоръчан от');
+</script>
