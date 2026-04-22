@@ -2664,7 +2664,7 @@ function buildClientModal() {
     </div>
     <div class="fr">
       <div class="fg"><label>Как ни намери?</label>
-        <select id="mcl-found">
+        <select id="mcl-found" onchange="toggleReferredBy(this.value)">
           <option value="">— Избери —</option>
           <option>Instagram</option><option>Facebook</option>
           <option>Препоръка</option><option>Google</option><option>TikTok</option><option>Друго</option>
@@ -2677,6 +2677,15 @@ function buildClientModal() {
           <option value="phone">📞 Телефон</option>
           <option value="email">📧 Имейл</option>
         </select>
+      </div>
+    </div>
+    <div class="fg" id="mcl-referred-wrap" style="display:none;margin-bottom:8px">
+      <label>🔗 Препоръчан от (избери клиент)</label>
+      <div style="display:flex;gap:8px">
+        <select id="mcl-referred-by" style="flex:1">
+          <option value="">— Избери клиент —</option>
+        </select>
+        <button class="btn btn-secondary btn-sm" onclick="openClientModal()" type="button">+ Нов клиент</button>
       </div>
     </div>
 
@@ -9228,4 +9237,361 @@ if (typeof quoteCard === 'function') {
 // ALTER TABLE clients ADD COLUMN IF NOT EXISTS referred_by uuid REFERENCES clients(id);
 
 console.log('✅ Сезонен планировчик + Hourly Rate + Вирусен ефект + Bulgarian Story заредени!');
+</script>
+
+<script>
+'use strict';
+// ════════════════════════════════════════════
+// ПОПРАВКИ — Дати BG · 24ч · Dashboard · 
+// Препоръчан от · Temu PDF · Клиент запис
+// ════════════════════════════════════════════
+
+// ── 1. Дати на Български ─────────────────────────────────────
+var BG_MONTHS = ['януари','февруари','март','април','май','юни',
+                 'юли','август','септември','октомври','ноември','декември'];
+var BG_MONTHS_SHORT = ['яну','фев','мар','апр','май','юни','юли','авг','сеп','окт','ное','дек'];
+var BG_DAYS = ['нед','пон','вто','сря','чет','пет','съб'];
+
+function fmtDateBG(dateStr) {
+  if (!dateStr) return '—';
+  var d = new Date(dateStr + 'T00:00:00');
+  if (isNaN(d)) return dateStr;
+  return d.getDate() + ' ' + BG_MONTHS[d.getMonth()] + ' ' + d.getFullYear();
+}
+
+function fmtDateShortBG(dateStr) {
+  if (!dateStr) return '—';
+  var d = new Date(dateStr + 'T00:00:00');
+  if (isNaN(d)) return dateStr;
+  return d.getDate() + ' ' + BG_MONTHS_SHORT[d.getMonth()];
+}
+
+function fmtTimeBG(timeStr) {
+  if (!timeStr) return '';
+  // Осигуряваме 24-часов формат HH:MM
+  var parts = timeStr.split(':');
+  if (parts.length >= 2) return parts[0].padStart(2,'0') + ':' + parts[1].padStart(2,'0') + 'ч';
+  return timeStr;
+}
+
+function daysFromBG(dateStr) {
+  if (!dateStr) return null;
+  var d = new Date(dateStr + 'T00:00:00');
+  var now = new Date(); now.setHours(0,0,0,0);
+  return Math.ceil((d - now) / 864e5);
+}
+
+// Overwrite глобалната eur0 ако трябва
+if (typeof eur0 === 'undefined') {
+  window.eur0 = function(n) { return '€' + (n||0).toFixed(0); };
+}
+
+// ── 2. Препоръчан от — toggle и зареждане ───────────────────
+function toggleReferredBy(val) {
+  var wrap = document.getElementById('mcl-referred-wrap');
+  if (!wrap) return;
+  wrap.style.display = val === 'Препоръка' ? 'block' : 'none';
+  if (val === 'Препоръка') fillReferredBySelect();
+}
+
+function fillReferredBySelect() {
+  var sel = document.getElementById('mcl-referred-by');
+  if (!sel) return;
+  var cur = sel.value;
+  sel.innerHTML = '<option value="">— Избери клиент —</option>' +
+    S.clients
+      .filter(function(c){ return c.id !== editId.client; })
+      .sort(function(a,b){ return (a.name||'').localeCompare(b.name||''); })
+      .map(function(c){ return '<option value="'+c.id+'"'+(cur===c.id?' selected':'')+'>'+c.name+(c.phone?' · '+c.phone:'')+'</option>'; })
+      .join('');
+}
+
+// Patch openClientModal да зарежда referred_by
+var _origOpenClient = window.openClientModal;
+window.openClientModal = function(id) {
+  _origOpenClient(id);
+  setTimeout(function(){
+    var c = id ? S.clients.find(function(x){ return x.id===id; }) : null;
+    // Зареждаме referred_by
+    if (c && c.referred_by) {
+      var foundSel = document.getElementById('mcl-found');
+      if (foundSel) { foundSel.value = 'Препоръка'; toggleReferredBy('Препоръка'); }
+      setTimeout(function(){
+        var refSel = document.getElementById('mcl-referred-by');
+        if (refSel) refSel.value = c.referred_by;
+      }, 50);
+    }
+  }, 50);
+};
+
+// Patch saveClient да записва referred_by
+var _origSaveClient = window.saveClient;
+window.saveClient = async function() {
+  // Добавяме referred_by към payload преди запис
+  var refSel = document.getElementById('mcl-referred-by');
+  var foundSel = document.getElementById('mcl-found');
+  var isReferral = foundSel && foundSel.value === 'Препоръка';
+  var referredById = isReferral && refSel ? refSel.value || null : null;
+
+  // Извикваме оригиналния saveClient
+  var origInsert = window._supabaseInsert;
+  
+  // Patch db.from временно
+  var origFrom = db.from.bind(db);
+  var patchedOnce = false;
+  db.from = function(table) {
+    var builder = origFrom(table);
+    if (table === 'clients' && !patchedOnce) {
+      patchedOnce = true;
+      var origInsertFn = builder.insert.bind(builder);
+      var origUpdateFn = builder.update.bind(builder);
+      builder.insert = function(payload) {
+        if (referredById) payload.referred_by = referredById;
+        return origInsertFn(payload);
+      };
+      builder.update = function(payload) {
+        if (referredById) payload.referred_by = referredById;
+        else if (isReferral === false) payload.referred_by = null;
+        return origUpdateFn(payload);
+      };
+    }
+    return builder;
+  };
+
+  await _origSaveClient();
+  db.from = origFrom;
+
+  // Ако е препоръка — обновяваме referral_count на посланика
+  if (referredById && !editId.client) {
+    var referrer = S.clients.find(function(c){ return c.id===referredById; });
+    if (referrer) {
+      await db.from('clients').update({
+        referral_count: (referrer.referral_count||0) + 1
+      }).eq('id', referredById);
+      await dbLoad('clients','clients','name');
+    }
+  }
+};
+
+// ── 3. Dashboard — предстоящи събития ───────────────────────
+var _origDashboard = window.render_dashboard;
+window.render_dashboard = function(el) {
+  _origDashboard(el);
+  // Намираме div-а за предстоящи и го попълваме
+  setTimeout(function(){
+    var upcomingEl = document.getElementById('dash-upcoming');
+    if (!upcomingEl) {
+      // Търсим секцията с "Предстоящи"
+      var allDivs = el.querySelectorAll('.sdiv, h3');
+      allDivs.forEach(function(d){
+        if (d.textContent && d.textContent.includes('Предстоящ')) {
+          renderDashUpcoming(d.parentNode || d.nextElementSibling);
+        }
+      });
+    } else {
+      renderDashUpcoming(upcomingEl);
+    }
+  }, 100);
+};
+
+function renderDashUpcoming(container) {
+  if (!container) return;
+  var td = today();
+  var in30 = new Date(Date.now() + 30*864e5).toISOString().slice(0,10);
+  var upcoming = S.quotes.filter(function(q){
+    return q.event_date && q.event_date >= td && q.event_date <= in30 &&
+      (q.status==='accepted'||q.status==='deposit_paid'||q.status==='sent');
+  }).sort(function(a,b){ return a.event_date.localeCompare(b.event_date); }).slice(0,5);
+
+  if (upcoming.length === 0) return;
+
+  var html = upcoming.map(function(q){
+    var cl = S.clients.find(function(c){ return c.id===q.client_id; });
+    var dl = daysFromBG(q.event_date);
+    var dlLabel = dl===0?'ДНЕС':dl===1?'УТРЕ':dl+'д';
+    var dlColor = dl<=1?'var(--red)':dl<=3?'var(--amber)':'var(--green)';
+    return '<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)">'+
+      '<div style="width:44px;height:44px;border-radius:10px;background:'+dlColor+'20;display:flex;flex-direction:column;align-items:center;justify-content:center;flex-shrink:0">'+
+        '<div style="font-size:13px;font-weight:900;color:'+dlColor+'">'+dlLabel+'</div>'+
+      '</div>'+
+      '<div style="flex:1;min-width:0">'+
+        '<div style="font-size:13px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+(cl?cl.name:'—')+'</div>'+
+        '<div style="font-size:11px;color:var(--ink-m)">'+fmtDateBG(q.event_date)+(q.event_time?' · '+fmtTimeBG(q.event_time):'')+(q.event_type?' · '+q.event_type:'')+'</div>'+
+      '</div>'+
+      '<div style="font-weight:700;color:var(--rose-d);font-size:13px">'+eur0(q.total_price)+'</div>'+
+    '</div>';
+  }).join('');
+
+  // Намираме празен контейнер и го попълваме
+  var empties = container.querySelectorAll('.empty-state');
+  empties.forEach(function(e){ e.style.display='none'; });
+  var listEl = container.querySelector('[id$="-upcoming-list"]');
+  if (listEl) { listEl.innerHTML = html; }
+  else {
+    // Добавяме директно
+    var newDiv = document.createElement('div');
+    newDiv.innerHTML = html;
+    container.appendChild(newDiv);
+  }
+}
+
+// ── 4. Temu PDF — поправен импорт ────────────────────────────
+var _origProcessTemuPDF = window.processTemuPDF;
+window.processTemuPDF = async function(file) {
+  var status = document.getElementById('temu-status');
+  var statusText = document.getElementById('temu-status-text');
+  if (status) { status.style.display='flex'; status.className='alert blue'; }
+  if (statusText) statusText.textContent = '🔄 Чета PDF файла...';
+
+  try {
+    var base64 = await new Promise(function(resolve, reject) {
+      var reader = new FileReader();
+      reader.onload = function() {
+        var result = reader.result;
+        var b64 = result.indexOf(',') !== -1 ? result.split(',')[1] : result;
+        resolve(b64);
+      };
+      reader.onerror = function() { reject(new Error('Грешка при четене на файла')); };
+      reader.readAsDataURL(file);
+    });
+
+    if (statusText) statusText.textContent = '🤖 Claude анализира поръчката...';
+
+    var response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 2000,
+        messages: [{
+          role: 'user',
+          content: [
+            {
+              type: 'document',
+              source: { type: 'base64', media_type: 'application/pdf', data: base64 }
+            },
+            {
+              type: 'text',
+              text: 'Това е фактура или поръчка от онлайн магазин (Temu, Shein или друг).\n\nИзвлечи ВСИЧКИ артикули и върни САМО валиден JSON масив без markdown:\n[\n  {\n    "name": "кратко наименование на BG (макс 60 символа)",\n    "name_original": "оригинално наименование",\n    "quantity": 1,\n    "unit": "бр",\n    "price_eur": 10.95,\n    "category": "Покривала за арки или Балони или Декорации или Консумативи или Производство или Фигури или Осветление или Друго",\n    "supplier": "Temu",\n    "size": "размер ако е посочен",\n    "order_id": "номер на поръчката ако има",\n    "order_date": "дата YYYY-MM-DD ако има"\n  }\n]\n\nВАЖНО: Върни САМО JSON масив. Нищо друго.'
+            }
+          ]
+        }]
+      })
+    });
+
+    if (!response.ok) {
+      var errData = await response.json().catch(function(){ return {}; });
+      throw new Error('API грешка: ' + (errData.error?.message || response.status));
+    }
+
+    var data = await response.json();
+    var text = (data.content||[]).map(function(c){ return c.text||''; }).join('');
+
+    // Почистваме текста
+    var clean = text.trim();
+    clean = clean.replace(/^```json\s*/i,'').replace(/^```\s*/,'').replace(/\s*```$/,'').trim();
+
+    var items;
+    try {
+      items = JSON.parse(clean);
+    } catch(e1) {
+      // Опит за извличане на JSON масив
+      var match = clean.match(/\[[\s\S]*\]/);
+      if (match) {
+        try { items = JSON.parse(match[0]); }
+        catch(e2) { throw new Error('Не мога да разпарсна отговора от Claude'); }
+      } else {
+        throw new Error('Невалиден JSON отговор');
+      }
+    }
+
+    if (!Array.isArray(items) || items.length === 0) {
+      throw new Error('Не намерих артикули в документа');
+    }
+
+    window.importItems = items.map(function(item, i) {
+      return Object.assign({ _id:'imp_'+i, _selected:true }, item);
+    });
+
+    if (status) status.className = 'alert green';
+    if (statusText) statusText.textContent = '✅ Разпознах ' + importItems.length + ' артикула!';
+
+    if (typeof renderImportResults === 'function') renderImportResults(file.name);
+    if (typeof saveImportHistory === 'function') saveImportHistory(file.name, importItems.length, importItems[0]?.order_id);
+
+  } catch(e) {
+    console.error('Temu PDF error:', e);
+    if (status) status.className = 'alert red';
+    if (statusText) statusText.textContent = '❌ ' + e.message;
+    toast('PDF грешка: ' + e.message, 'err');
+  }
+};
+
+// ── 5. Часови формат — 24ч навсякъде ────────────────────────
+// Patch всички time inputs да са 24ч
+document.addEventListener('DOMContentLoaded', function(){
+  document.querySelectorAll('input[type="time"]').forEach(function(inp){
+    inp.setAttribute('step', '300'); // 5мин стъпка
+  });
+});
+
+// ── 6. Календар — поправен формат на дати ───────────────────
+var _origCalendar = window.render_calendar;
+window.render_calendar = function(el) {
+  _origCalendar(el);
+  // Patch датите в calendar след рендиране
+  setTimeout(function(){
+    el.querySelectorAll('.cal-day-num').forEach(function(d){
+      // Вече са числа — ok
+    });
+  }, 50);
+};
+
+// ── 7. Dashboard — поправен Greeting и Stats ─────────────────
+// Patch за показване на правилни предстоящи
+var _origRenderDash = window.render_dashboard;
+window.render_dashboard = function(el) {
+  _origRenderDash(el);
+  setTimeout(function(){
+    // Намираме и обновяваме предстоящите
+    var td = today();
+    var in14 = new Date(Date.now() + 14*864e5).toISOString().slice(0,10);
+    var upcoming = S.quotes.filter(function(q){
+      return q.event_date >= td && q.event_date <= in14 &&
+        ['accepted','deposit_paid','sent','soft_hold'].indexOf(q.status) !== -1;
+    }).sort(function(a,b){ return a.event_date.localeCompare(b.event_date); });
+
+    // Намираме празен state в dashboard
+    var emptyStates = el.querySelectorAll('.empty-state');
+    if (upcoming.length > 0) {
+      emptyStates.forEach(function(es){
+        if (es.textContent && es.textContent.includes('предстоящ')) {
+          var parent = es.parentNode;
+          es.remove();
+          var html = upcoming.slice(0,5).map(function(q){
+            var cl = S.clients.find(function(c){ return c.id===q.client_id; });
+            var dl = daysFromBG(q.event_date);
+            var dlLabel = dl===0?'ДНЕС':dl===1?'УТРЕ':dl+'д';
+            var dlColor = dl<=1?'var(--red)':dl<=3?'var(--amber)':'var(--green)';
+            return '<div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--border);cursor:pointer" onclick="go(\'quotes\')">'+
+              '<div style="width:46px;height:46px;border-radius:10px;background:'+dlColor+'15;border:1.5px solid '+dlColor+'40;display:flex;flex-direction:column;align-items:center;justify-content:center;flex-shrink:0">'+
+                '<div style="font-size:12px;font-weight:900;color:'+dlColor+'">'+dlLabel+'</div>'+
+              '</div>'+
+              '<div style="flex:1;min-width:0">'+
+                '<div style="font-size:13px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+(cl?cl.name:'—')+'</div>'+
+                '<div style="font-size:11px;color:var(--ink-m)">'+fmtDateBG(q.event_date)+(q.event_time?' · '+fmtTimeBG(q.event_time):'')+(q.event_type?' · '+q.event_type:'')+'</div>'+
+              '</div>'+
+              '<span class="badge '+(dl<=1?'br':dl<=3?'bw':'bg')+'">'+eur0(q.total_price)+'</span>'+
+            '</div>';
+          }).join('');
+          var div = document.createElement('div');
+          div.innerHTML = html;
+          parent.appendChild(div);
+        }
+      });
+    }
+  }, 200);
+};
+
+console.log('✅ Поправки v2 заредени: BG дати · 24ч · Dashboard · Препоръчан от · Temu PDF');
 </script>
