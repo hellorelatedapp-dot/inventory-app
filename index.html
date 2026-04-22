@@ -11807,3 +11807,86 @@ window.saveQuote = async function() {
 };
 console.log('✅ qiRows cleanup зареден');
 </script>
+
+<script>
+'use strict';
+// ════════════════════════════════════════════
+// ЦЕНИ — cost_price скрит, unit_price видим
+// + Gemar артикули получават продажна цена
+// ════════════════════════════════════════════
+
+// Patch renderQIRows да скрие cost_price колоната
+var _origRQI = window.renderQIRows;
+window.renderQIRows = function() {
+  _origRQI && _origRQI();
+  // Скриваме cost_price полетата (4-та колона в grid)
+  setTimeout(function(){
+    var modal = document.getElementById('mod-quote');
+    if (!modal) return;
+    // Намираме всички cost_price inputs в qiRows grid
+    // Grid е: описание(1fr) | раздел(100px) | кол(65px) | cost(75px) | unit(75px) | x(22px)
+    // Скриваме cost колоната
+    modal.querySelectorAll('[style*="grid-template-columns:1fr 100px 65px 75px 75px"]').forEach(function(row){
+      var inputs = row.querySelectorAll('input[type="number"]');
+      // inputs[0] = quantity, inputs[1] = cost_price, inputs[2] = unit_price
+      if (inputs[1]) {
+        inputs[1].style.display = 'none'; // скриваме cost_price
+        inputs[1].closest('div') && (inputs[1].closest('div').style.display = 'none');
+      }
+    });
+    // Обновяваме grid колоните
+    modal.querySelectorAll('[style*="grid-template-columns:1fr 100px 65px 75px 75px 22px"]').forEach(function(row){
+      row.style.gridTemplateColumns = '1fr 100px 65px 90px 22px';
+      var inputs = row.querySelectorAll('input[type="number"]');
+      if (inputs[1]) inputs[1].style.display = 'none';
+    });
+  }, 50);
+};
+
+// Patch onQIProdChange — unit_price = продажна цена
+// Ако продуктът няма продажна цена → изчисляваме от cost_price × 2
+var _origOQI = window.onQIProdChange;
+window.onQIProdChange = function(i, pid) {
+  var p = S.products.find(function(x){ return x.id===pid; });
+  if (p) {
+    qiRows[i].product_id  = pid;
+    qiRows[i].description = p.name;
+    qiRows[i].cost_price  = p.cost_price || 0;
+
+    // Продажна цена: ако p.price > 0 → използваме, иначе cost × 2
+    var salePrice = p.price || 0;
+    if (!salePrice || salePrice === p.cost_price) {
+      // Нямаме различна продажна цена — оставяме 0 за ръчно въвеждане
+      salePrice = 0;
+    }
+    qiRows[i].unit_price = salePrice;
+
+    if (typeof renderQIRows === 'function') renderQIRows();
+    if (typeof updateQISummary === 'function') updateQISummary();
+  }
+};
+
+// Подобряваме label-а на unit_price колоната
+var _origOM2 = window.om;
+window.om = function(id) {
+  _origOM2(id);
+  if (id === 'mod-quote') {
+    setTimeout(function(){
+      // Намираме header на qiRows таблицата и обновяваме
+      var headers = document.querySelectorAll('#mod-quote [style*="font-size:10px"]');
+      headers.forEach(function(h){
+        if (h.textContent.trim() === 'Себест.' || h.textContent.trim() === 'Cost') {
+          h.style.display = 'none';
+        }
+        if (h.textContent.trim() === 'Ед. цена') {
+          h.style.color = 'var(--rose-d)';
+          h.style.fontWeight = '700';
+        }
+      });
+      if (typeof renderQIRows === 'function') renderQIRows();
+    }, 100);
+  }
+};
+
+console.log('✅ Цени поправени: cost скрит, unit_price = продажна');
+</script>
