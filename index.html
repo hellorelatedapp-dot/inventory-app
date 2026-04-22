@@ -10827,3 +10827,205 @@ window.confirmImport = async function() {
 
 console.log('✅ dbLoad limit поправен — products до 5000 артикула');
 </script>
+
+<script>
+'use strict';
+// ════════════════════════════════════════════
+// GEMAR ДИРЕКТЕН ИМПОРТ — записва веднага
+// ════════════════════════════════════════════
+
+window.handleGemarExcelImport = async function(file) {
+  var statusEl = document.getElementById('temu-status');
+  var textEl   = document.getElementById('temu-status-text');
+
+  function setStatus(msg, type) {
+    if (statusEl) { statusEl.style.display='flex'; statusEl.className='alert '+(type||'blue'); }
+    if (textEl)   textEl.textContent = msg;
+  }
+
+  setStatus('📊 Зареждам SheetJS...', 'blue');
+
+  try {
+    // Зареждаме SheetJS
+    if (typeof XLSX === 'undefined') {
+      await new Promise(function(res, rej){
+        var s = document.createElement('script');
+        s.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+        s.onload = res; s.onerror = rej;
+        document.head.appendChild(s);
+      });
+    }
+
+    setStatus('📖 Чета Excel файла...', 'blue');
+
+    var buf  = await file.arrayBuffer();
+    var wb   = XLSX.read(new Uint8Array(buf), { type:'array' });
+
+    // Дебъг — показваме листовете
+    console.log('Листове:', wb.SheetNames);
+
+    // Намираме листа с инвентара
+    var sheetName = wb.SheetNames.find(function(n){
+      return n.includes('Инвентар') || n.includes('инвент');
+    }) || wb.SheetNames[1] || wb.SheetNames[0];
+
+    console.log('Използвам лист:', sheetName);
+    var ws   = wb.Sheets[sheetName];
+    var rows = XLSX.utils.sheet_to_json(ws, { header:1, defval:'' });
+
+    console.log('Общо редове:', rows.length);
+    console.log('Ред 0:', rows[0]);
+    console.log('Ред 1:', rows[1]);
+    console.log('Ред 2:', rows[2]);
+
+    // Намираме header ред
+    var hdr = -1;
+    for (var i=0; i<Math.min(rows.length,5); i++) {
+      var r = rows[i];
+      var hasArt = r.some(function(c){ 
+        return String(c).includes('Артикул') || String(c).includes('артикул'); 
+      });
+      var hasQty = r.some(function(c){ 
+        return String(c).includes('Налично') || String(c).includes('налично') || String(c).includes('⭐'); 
+      });
+      if (hasArt || hasQty) { hdr = i; break; }
+    }
+
+    if (hdr < 0) {
+      // Ако не намерим хедър — опитваме с ред 1 (стандарт на нашия файл)
+      hdr = 1;
+      console.warn('Хедър не намерен, използвам ред 1');
+    }
+
+    console.log('Хедър ред:', hdr, rows[hdr]);
+
+    var headers = rows[hdr].map(function(c){ return String(c||'').trim(); });
+    console.log('Headers:', headers);
+
+    // Намираме колоните по точни имена от нашия файл
+    var colLinia  = headers.findIndex(function(h){ return h==='Линия' || h.includes('Лини'); });
+    var colKod    = headers.findIndex(function(h){ return h==='Код #' || h==='Код'; });
+    var colColor  = headers.findIndex(function(h){ return h.includes('Цвят') && !h.includes('◼'); });
+    var colArt    = headers.findIndex(function(h){ return h==='Артикул'; });
+    var colSize   = headers.findIndex(function(h){ return h==='Размер'; });
+    var colPrice  = headers.findIndex(function(h){ return h.includes('Цена/бр'); });
+    var colQty    = headers.findIndex(function(h){ return h.includes('Налично') || h.includes('⭐'); });
+    var colMin    = headers.findIndex(function(h){ return h==='Минимум'; });
+
+    console.log('Колони:', { colLinia, colKod, colColor, colArt, colSize, colPrice, colQty, colMin });
+
+    if (colArt < 0) {
+      throw new Error('Не намерих колона "Артикул". Провери формата на файла.');
+    }
+    if (colQty < 0) {
+      throw new Error('Не намерих колона "⭐ Налично". Провери формата на файла.');
+    }
+
+    // Извличаме редовете
+    var toInsert = [];
+    for (var j = hdr+1; j < rows.length; j++) {
+      var row = rows[j];
+      if (!row || !row[colArt]) continue;
+
+      var artVal = String(row[colArt]||'').trim();
+      if (!artVal) continue;
+
+      var qtyRaw = row[colQty];
+      var qty    = typeof qtyRaw === 'number' ? qtyRaw : parseFloat(String(qtyRaw||'0').replace(',','.'));
+      if (!qty || qty <= 0) continue;
+
+      var linia  = colLinia>=0  ? String(row[colLinia]||'').trim()  : '';
+      var kod    = colKod>=0    ? String(row[colKod]||'').trim()    : '';
+      var color  = colColor>=0  ? String(row[colColor]||'').split('/')[0].trim() : '';
+      var size   = colSize>=0   ? String(row[colSize]||'').trim()   : '';
+      var price  = colPrice>=0  ? (typeof row[colPrice]==='number' ? row[colPrice] : parseFloat(String(row[colPrice]||'0').replace(',','.'))) : 0;
+      var minQ   = colMin>=0    ? (typeof row[colMin]==='number'   ? row[colMin]   : parseFloat(String(row[colMin]||'10'))) : 10;
+
+      // Наименование: "G90 · #001 · Бяло · 30см"
+      var nameParts = [artVal];
+      if (kod)   nameParts.push(kod);
+      if (color) nameParts.push(color);
+      if (size)  nameParts.push(size);
+      var name = nameParts.join(' · ');
+
+      toInsert.push({
+        name:         name,
+        quantity:     Math.round(qty),
+        unit:         'бр',
+        price:        price || 0,
+        cost_price:   price || 0,
+        min_quantity: Math.round(minQ)||10,
+        status:       'available',
+        product_type: 'consumable',
+        notes:        linia ? 'Серия: '+linia : null,
+        location:     'Склад',
+        supplier_id:  null,
+        category_id:  null,
+        image_url:    null,
+      });
+    }
+
+    console.log('Артикули за запис:', toInsert.length);
+    if (toInsert.length === 0) {
+      throw new Error('Няма артикули с налично > 0. Попълни колоната "⭐ Налично" в Excel файла!');
+    }
+
+    setStatus('💾 Записвам ' + toInsert.length + ' артикула...', 'blue');
+
+    // Записваме на партиди от 50
+    var BATCH = 50;
+    var added = 0, errors = 0;
+
+    for (var start = 0; start < toInsert.length; start += BATCH) {
+      var batch = toInsert.slice(start, start + BATCH);
+      try {
+        var res = await db.from('products').upsert(batch, { 
+          onConflict: 'name',
+          ignoreDuplicates: false 
+        });
+        if (res.error) {
+          console.warn('Upsert грешка, опитвам insert:', res.error.message);
+          // Опитваме обикновен insert
+          var res2 = await db.from('products').insert(batch);
+          if (res2.error) {
+            console.error('Insert грешка:', res2.error);
+            errors += batch.length;
+          } else {
+            added += batch.length;
+          }
+        } else {
+          added += batch.length;
+        }
+      } catch(e) {
+        console.error('Batch грешка:', e);
+        errors += batch.length;
+      }
+
+      setStatus('💾 Записано ' + Math.min(start+BATCH, toInsert.length) + ' / ' + toInsert.length + '...', 'blue');
+    }
+
+    // Презареждаме продуктите
+    var reload = await db.from('products')
+      .select('*,categories(name,color),suppliers(name)')
+      .order('name', { ascending: true })
+      .limit(5000);
+    S.products = reload.data || [];
+
+    console.log('✅ Продукти в S:', S.products.length);
+
+    setStatus('✅ Готово! Добавени: ' + added + (errors?' · Грешки: '+errors:''), 'green');
+    toast('🌿 Gemar: ' + added + ' артикула в инвентара!', 'ok');
+    updateBadges();
+
+    // Навигираме към инвентара
+    setTimeout(function(){ go('inventory'); }, 800);
+
+  } catch(e) {
+    console.error('Gemar Import FATAL:', e);
+    setStatus('❌ ' + e.message, 'red');
+    toast('Грешка: ' + e.message, 'err');
+  }
+};
+
+console.log('✅ Gemar директен импорт v2 зареден');
+</script>
