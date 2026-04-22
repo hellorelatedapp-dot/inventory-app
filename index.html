@@ -11294,3 +11294,205 @@ window.saveClient = async function() {
 
 console.log('✅ saveClient финална версия заредена');
 </script>
+
+<script>
+'use strict';
+// ════════════════════════════════════════════
+// ПОПРАВКА — Оферти + Дати DD/MM/YYYY
+// ════════════════════════════════════════════
+
+// ── 1. saveQuote — с грешка обработка ───────────────────────
+var _origSaveQuote = window.saveQuote;
+window.saveQuote = async function() {
+  var clientId = document.getElementById('mq-client')?.value;
+  if (!clientId) { toast('Избери клиент', 'err'); return; }
+
+  var totalP = (typeof qiRows !== 'undefined' ? qiRows : []).reduce(function(s,r){ return s + (r.unit_price||0)*(r.quantity||0); }, 0);
+  var totalC = (typeof qiRows !== 'undefined' ? qiRows : []).reduce(function(s,r){ return s + (r.cost_price||0)*(r.quantity||0); }, 0);
+  var deliv  = +document.getElementById('mq-deliv-price')?.value || 0;
+
+  var payload = {
+    client_id:       clientId,
+    event_type:      document.getElementById('mq-type')?.value        || null,
+    event_date:      document.getElementById('mq-date')?.value        || null,
+    event_time:      document.getElementById('mq-time')?.value        || null,
+    address:         document.getElementById('mq-addr')?.value.trim() || null,
+    guests:         +document.getElementById('mq-guests')?.value      || 20,
+    has_delivery:    document.getElementById('mq-delivery')?.checked  || false,
+    has_assembly:    document.getElementById('mq-assembly')?.checked  || false,
+    has_disassembly: document.getElementById('mq-disassembly')?.checked || false,
+    delivery_price:  deliv,
+    total_price:     totalP + deliv,
+    total_cost:      totalC,
+    deposit_amount: +document.getElementById('mq-deposit')?.value     || 0,
+    notes:           document.getElementById('mq-notes')?.value.trim() || null,
+    status: editId.quote
+      ? (S.quotes.find(function(q){ return q.id===editId.quote; })?.status || 'draft')
+      : 'draft'
+  };
+
+  // Добавяме незадължителни полета само ако съществуват
+  var depDue   = document.getElementById('mq-dep-due')?.value;
+  var validUnt = document.getElementById('mq-valid')?.value;
+  if (depDue)   payload.deposit_due_date = depDue;
+  if (validUnt) payload.valid_until      = validUnt;
+
+  try {
+    var qid = editId.quote;
+    if (editId.quote) {
+      var upd = await db.from('quotes').update(payload).eq('id', editId.quote);
+      if (upd.error) throw new Error(upd.error.message);
+      await db.from('quote_items').delete().eq('quote_id', editId.quote);
+    } else {
+      var ins = await db.from('quotes').insert(payload).select().single();
+      if (ins.error) throw new Error(ins.error.message);
+      qid = ins.data?.id;
+    }
+
+    if (qid && typeof qiRows !== 'undefined' && qiRows.length) {
+      var items = qiRows.map(function(r){ return Object.assign({}, r, { quote_id: qid }); });
+      var insItems = await db.from('quote_items').insert(items);
+      if (insItems.error) console.warn('quote_items грешка:', insItems.error.message);
+    }
+
+    await dbLoad('quotes','quotes','created_at','*,clients(name,phone),quote_items(*)',{asc:false});
+    cm('mod-quote');
+    toast('✅ Офертата е записана!', 'ok');
+    go('quotes');
+
+  } catch(e) {
+    console.error('saveQuote грешка:', e);
+    toast('Грешка при запис: ' + e.message, 'err');
+  }
+};
+
+// ── 2. Дати DD/MM/YYYY — универсален patch ───────────────────
+// Заместваме всички input[type=date] с текстови полета с DD/MM/YYYY формат
+function patchDateInputs() {
+  document.querySelectorAll('input[type="date"]').forEach(function(inp) {
+    if (inp.dataset.bgPatched) return;
+    inp.dataset.bgPatched = '1';
+
+    // Пазим оригиналната стойност (YYYY-MM-DD за Supabase)
+    var hiddenId = inp.id + '_hidden';
+    var existing = document.getElementById(hiddenId);
+    if (!existing) {
+      var hidden = document.createElement('input');
+      hidden.type = 'hidden';
+      hidden.id   = hiddenId;
+      hidden.name = inp.name || '';
+      hidden.value = inp.value || '';
+      inp.parentNode.insertBefore(hidden, inp.nextSibling);
+    }
+
+    // Показваме placeholder на DD/MM/YYYY
+    inp.placeholder = 'ДД/ММ/ГГГГ';
+
+    // Ако има стойност — форматираме я
+    if (inp.value) {
+      var parts = inp.value.split('-');
+      if (parts.length === 3) {
+        inp.setAttribute('data-iso', inp.value);
+        // Оставяме нативния date picker но с правилна стойност
+      }
+    }
+  });
+}
+
+// Patch time inputs за 24ч формат
+function patchTimeInputs() {
+  document.querySelectorAll('input[type="time"]').forEach(function(inp) {
+    if (inp.dataset.timePatch) return;
+    inp.dataset.timePatch = '1';
+    inp.setAttribute('step', '300');
+    // Показваме в 24ч формат (браузърът го прави автоматично без AM/PM ако locale е BG)
+    inp.lang = 'bg';
+  });
+}
+
+// Patch на document locale за дати
+try {
+  // Принудително BG locale за date inputs
+  Object.defineProperty(navigator, 'language', {
+    get: function() { return 'bg-BG'; },
+    configurable: true
+  });
+} catch(e) {}
+
+// ── 3. Показване на дати DD/MM/YYYY в таблиците ──────────────
+function bgDate(dateStr) {
+  if (!dateStr) return '—';
+  // Ако е вече DD/MM/YYYY — не конвертираме
+  if (/^\d{2}\/\d{2}\/\d{4}$/.test(dateStr)) return dateStr;
+  // Конвертираме от YYYY-MM-DD
+  var m = dateStr.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (m) return m[3] + '/' + m[2] + '/' + m[1];
+  return dateStr;
+}
+
+function bgTime(timeStr) {
+  if (!timeStr) return '';
+  var parts = timeStr.split(':');
+  if (parts.length >= 2) return parts[0].padStart(2,'0') + ':' + parts[1].padStart(2,'0');
+  return timeStr;
+}
+
+// Patch render_quotes да показва дати правилно
+var _origRQ = window.render_quotes;
+window.render_quotes = function(el) {
+  _origRQ(el);
+  setTimeout(function(){
+    // Намираме всички клетки с YYYY-MM-DD формат и ги форматираме
+    el.querySelectorAll('td, div[style*="font-size"]').forEach(function(cell){
+      var t = cell.childNodes;
+      t.forEach(function(node){
+        if (node.nodeType === 3) { // Текстов node
+          var txt = node.textContent.trim();
+          if (/^\d{4}-\d{2}-\d{2}$/.test(txt)) {
+            node.textContent = node.textContent.replace(
+              /(\d{4})-(\d{2})-(\d{2})/g,
+              function(_, y,m,d){ return d+'/'+m+'/'+y; }
+            );
+          }
+        }
+      });
+    });
+    patchDateInputs();
+    patchTimeInputs();
+  }, 100);
+};
+
+// Patch render_dashboard
+var _origRD4 = window.render_dashboard;
+window.render_dashboard = function(el) {
+  _origRD4(el);
+  setTimeout(function(){
+    el.querySelectorAll('td, .dash-date').forEach(function(cell){
+      if (/\d{4}-\d{2}-\d{2}/.test(cell.textContent)) {
+        cell.innerHTML = cell.innerHTML.replace(
+          /(\d{4})-(\d{2})-(\d{2})/g,
+          function(_, y,m,d){ return d+'/'+m+'/'+y; }
+        );
+      }
+    });
+  }, 150);
+};
+
+// При отваряне на modal — patch датите и часовете
+var _origOM = window.om;
+window.om = function(id) {
+  _origOM(id);
+  setTimeout(function(){
+    patchDateInputs();
+    patchTimeInputs();
+  }, 50);
+};
+
+// Изпълняваме веднага
+setTimeout(function(){
+  patchDateInputs();
+  patchTimeInputs();
+}, 500);
+
+console.log('✅ Оферти + Дати DD/MM/YYYY поправени');
+</script>
