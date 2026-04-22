@@ -11808,231 +11808,69 @@ window.saveQuote = async function() {
 console.log('✅ qiRows cleanup зареден');
 </script>
 
+
 <script>
 'use strict';
 // ════════════════════════════════════════════
-// ЦЕНИ — cost_price скрит, unit_price видим
-// + Gemar артикули получават продажна цена
+// МИНИМАЛНА ПОПРАВКА — само скриваме себестойността
+// Оригиналните функции остават непроменени!
 // ════════════════════════════════════════════
 
-// Patch renderQIRows да скрие cost_price колоната
-var _origRQI = window.renderQIRows;
-window.renderQIRows = function() {
-  _origRQI && _origRQI();
-  // Скриваме cost_price полетата (4-та колона в grid)
-  setTimeout(function(){
-    var modal = document.getElementById('mod-quote');
-    if (!modal) return;
-    // Намираме всички cost_price inputs в qiRows grid
-    // Grid е: описание(1fr) | раздел(100px) | кол(65px) | cost(75px) | unit(75px) | x(22px)
-    // Скриваме cost колоната
-    modal.querySelectorAll('[style*="grid-template-columns:1fr 100px 65px 75px 75px"]').forEach(function(row){
-      var inputs = row.querySelectorAll('input[type="number"]');
-      // inputs[0] = quantity, inputs[1] = cost_price, inputs[2] = unit_price
-      if (inputs[1]) {
-        inputs[1].style.display = 'none'; // скриваме cost_price
-        inputs[1].closest('div') && (inputs[1].closest('div').style.display = 'none');
-      }
-    });
-    // Обновяваме grid колоните
-    modal.querySelectorAll('[style*="grid-template-columns:1fr 100px 65px 75px 75px 22px"]').forEach(function(row){
-      row.style.gridTemplateColumns = '1fr 100px 65px 90px 22px';
-      var inputs = row.querySelectorAll('input[type="number"]');
-      if (inputs[1]) inputs[1].style.display = 'none';
-    });
-  }, 50);
-};
-
-// Patch onQIProdChange — unit_price = продажна цена
-// Ако продуктът няма продажна цена → изчисляваме от cost_price × 2
-var _origOQI = window.onQIProdChange;
-window.onQIProdChange = function(i, pid) {
-  var p = S.products.find(function(x){ return x.id===pid; });
-  if (p) {
-    qiRows[i].product_id  = pid;
-    qiRows[i].description = p.name;
-    qiRows[i].cost_price  = p.cost_price || 0;
-
-    // Продажна цена: ако p.price > 0 → използваме, иначе cost × 2
-    var salePrice = p.price || 0;
-    if (!salePrice || salePrice === p.cost_price) {
-      // Нямаме различна продажна цена — оставяме 0 за ръчно въвеждане
-      salePrice = 0;
+// Само скриваме колоната "Себест.€" в хедъра
+setTimeout(function(){
+  var headers = document.querySelectorAll('#mod-quote [style*="text-transform:uppercase"]');
+  headers.forEach(function(h){
+    if (h.textContent.trim() === 'Себест.€') {
+      h.style.display = 'none';
     }
-    qiRows[i].unit_price = salePrice;
+  });
+}, 300);
 
-    if (typeof renderQIRows === 'function') renderQIRows();
-    if (typeof updateQISummary === 'function') updateQISummary();
-  }
-};
-
-// Подобряваме label-а на unit_price колоната
-var _origOM2 = window.om;
+// При отваряне на modal — скриваме Себест. колоната
+var _origOM_q = window.om;
 window.om = function(id) {
-  _origOM2(id);
+  _origOM_q(id);
   if (id === 'mod-quote') {
     setTimeout(function(){
-      // Намираме header на qiRows таблицата и обновяваме
-      var headers = document.querySelectorAll('#mod-quote [style*="font-size:10px"]');
-      headers.forEach(function(h){
-        if (h.textContent.trim() === 'Себест.' || h.textContent.trim() === 'Cost') {
-          h.style.display = 'none';
-        }
-        if (h.textContent.trim() === 'Ед. цена') {
-          h.style.color = 'var(--rose-d)';
-          h.style.fontWeight = '700';
+      // Скриваме Себест. хедър
+      document.querySelectorAll('#mod-quote div').forEach(function(d){
+        if (d.children.length === 0 && d.textContent.trim() === 'Себест.€') {
+          d.style.display = 'none';
         }
       });
-      if (typeof renderQIRows === 'function') renderQIRows();
+      // Скриваме cost_price полетата в редовете (4-та input колона)
+      document.querySelectorAll('#mq-items > div').forEach(function(row){
+        var inputs = row.querySelectorAll('input[type="number"]');
+        if (inputs.length >= 2) {
+          // inputs[0]=quantity, inputs[1]=cost_price, inputs[2]=unit_price
+          inputs[1].style.display = 'none';
+          inputs[1].style.width = '0';
+          inputs[1].style.padding = '0';
+          inputs[1].style.margin = '0';
+          inputs[1].style.border = 'none';
+        }
+      });
     }, 100);
   }
 };
 
-console.log('✅ Цени поправени: cost скрит, unit_price = продажна');
-</script>
-
-<script>
-'use strict';
-// ════════════════════════════════════════════
-// ПОПРАВКА — renderQIRows работи правилно
-// ════════════════════════════════════════════
-
-// Директно patch — не wrap, а замяна
+// Patch renderQIRows — само за скриване на cost_price колоната
+var _origRQI2 = window.renderQIRows;
 window.renderQIRows = function() {
-  var el = document.getElementById('qi-rows');
-  if (!el) return;
-
-  if (!qiRows || qiRows.length === 0) {
-    el.innerHTML = '<p style="font-size:12px;color:var(--ink-l);margin-bottom:6px">Добави артикули с бутоните по-долу</p>';
-    return;
-  }
-
-  el.innerHTML = qiRows.map(function(r, i) {
-    var productOptions = '<option value="">— или въведи описание —</option>' +
-      S.products.map(function(p){
-        return '<option value="'+p.id+'"'+(p.id===r.product_id?' selected':'')+'>'+p.name+'</option>';
-      }).join('');
-
-    return '<div style="display:grid;grid-template-columns:1fr 100px 65px 90px 22px;gap:5px;margin-bottom:5px;align-items:center">'+
-      '<div>'+
-        '<select onchange="onQIProdChange('+i+',this.value)" '+
-          'style="width:100%;padding:5px 7px;border:1.5px solid var(--border);border-radius:6px;font-size:11px;background:var(--card);color:var(--ink);margin-bottom:3px">'+
-          productOptions+
-        '</select>'+
-        '<input value="'+(r.description||'')+'" placeholder="Описание..." '+
-          'onchange="qiRows['+i+'].description=this.value" '+
-          'style="width:100%;padding:5px 7px;border:1.5px solid var(--border);border-radius:6px;font-size:11px;background:var(--card);color:var(--ink)">'+
-      '</div>'+
-      '<select onchange="qiRows['+i+'].section=this.value" '+
-        'style="padding:5px 6px;border:1.5px solid var(--border);border-radius:6px;font-size:11px;background:var(--card);color:var(--ink)">'+
-        ['Декорация','Балони','Маси','Оборудване','Услуги'].map(function(s){
-          return '<option'+(r.section===s?' selected':'')+'>'+s+'</option>';
-        }).join('')+
-      '</select>'+
-      '<input type="number" min="1" value="'+(r.quantity||1)+'" '+
-        'onchange="qiRows['+i+'].quantity=+this.value||1;updateQISummary()" '+
-        'style="padding:5px;border:1.5px solid var(--border);border-radius:6px;font-size:11px;text-align:center;background:var(--card);color:var(--ink)">'+
-      // Само продажна цена — cost_price е скрита
-      '<input type="number" min="0" step="0.01" value="'+(r.unit_price||0)+'" '+
-        'placeholder="Цена" '+
-        'onchange="qiRows['+i+'].unit_price=+this.value||0;updateQISummary()" '+
-        'style="padding:5px;border:1.5px solid var(--border);border-radius:6px;font-size:11px;text-align:center;background:var(--card);color:var(--ink)">'+
-      '<button onclick="qiRows.splice('+i+',1);renderQIRows();updateQISummary()" '+
-        'style="width:22px;height:22px;border:1px solid var(--red-l);background:var(--red-l);'+
-        'border-radius:5px;cursor:pointer;color:var(--red);font-size:14px;'+
-        'display:flex;align-items:center;justify-content:center;padding:0">×</button>'+
-    '</div>';
-  }).join('');
+  _origRQI2();
+  setTimeout(function(){
+    document.querySelectorAll('#mq-items > div').forEach(function(row){
+      var inputs = row.querySelectorAll('input[type="number"]');
+      if (inputs.length >= 2) {
+        inputs[1].style.display = 'none';
+        inputs[1].style.width = '0';
+        inputs[1].style.padding = '0';
+        inputs[1].style.margin = '0';
+        inputs[1].style.border = 'none';
+      }
+    });
+  }, 20);
 };
 
-// Patch onQIProdChange
-window.onQIProdChange = function(i, pid) {
-  var p = pid ? S.products.find(function(x){ return x.id===pid; }) : null;
-  if (p) {
-    qiRows[i].product_id  = pid;
-    qiRows[i].description = p.name;
-    qiRows[i].cost_price  = p.cost_price || 0;
-    // Продажна цена: ако има p.price различна от cost → използваме, иначе 0
-    qiRows[i].unit_price  = (p.price && p.price !== p.cost_price) ? p.price : 0;
-  }
-  renderQIRows();
-  updateQISummary();
-};
-
-console.log('✅ renderQIRows поправен — само продажна цена');
-</script>
-
-<script>
-'use strict';
-// ════════════════════════════════════════════
-// renderQIRows — финална поправка
-// ════════════════════════════════════════════
-window.renderQIRows = function() {
-  // Поддържа и двата ID-та
-  var el = document.getElementById('mq-items') || document.getElementById('qi-rows');
-  if (!el) return;
-
-  if (!qiRows || qiRows.length === 0) {
-    el.innerHTML = '<p style="font-size:12px;color:var(--ink-l);margin-bottom:6px">Добави артикули с бутоните по-долу</p>';
-    return;
-  }
-
-  el.innerHTML = qiRows.map(function(r, i) {
-    var opts = '<option value="">— избери от инвентар —</option>' +
-      S.products.map(function(p){
-        return '<option value="'+p.id+'"'+(p.id===r.product_id?' selected':'')+'>'+
-          (p.name.length>45 ? p.name.slice(0,45)+'...' : p.name)+'</option>';
-      }).join('');
-
-    var sectionOpts = ['Декорация','Балони','Маси','Оборудване','Услуги'].map(function(s){
-      return '<option'+(r.section===s?' selected':'')+'>'+s+'</option>';
-    }).join('');
-
-    return '<div style="display:grid;grid-template-columns:1fr 100px 60px 85px 22px;gap:5px;margin-bottom:5px;align-items:center">'+
-      '<div>'+
-        '<select onchange="onQIProdChange('+i+',this.value)" '+
-          'style="width:100%;padding:5px 7px;border:1.5px solid var(--border);border-radius:6px;font-size:11px;background:var(--card);color:var(--ink);margin-bottom:3px">'+
-          opts+
-        '</select>'+
-        '<input value="'+(r.description||'')+'" placeholder="Описание на артикула..." '+
-          'onchange="qiRows['+i+'].description=this.value" '+
-          'style="width:100%;padding:5px 7px;border:1.5px solid var(--border);border-radius:6px;font-size:11px;background:var(--card);color:var(--ink)">'+
-      '</div>'+
-      '<select onchange="qiRows['+i+'].section=this.value" '+
-        'style="padding:5px 6px;border:1.5px solid var(--border);border-radius:6px;font-size:11px;background:var(--card);color:var(--ink)">'+
-        sectionOpts+
-      '</select>'+
-      '<input type="number" min="1" value="'+(r.quantity||1)+'" '+
-        'onchange="qiRows['+i+'].quantity=+this.value||1;updateQISummary()" '+
-        'style="padding:5px;border:1.5px solid var(--border);border-radius:6px;font-size:11px;text-align:center;background:var(--card);color:var(--ink)" placeholder="Кол.">'+
-      '<input type="number" min="0" step="0.01" value="'+(r.unit_price||'')+'" '+
-        'onchange="qiRows['+i+'].unit_price=+this.value||0;updateQISummary()" '+
-        'style="padding:5px;border:1.5px solid var(--border);border-radius:6px;font-size:11px;text-align:center;background:var(--card);color:var(--ink)" placeholder="Цена€">'+
-      '<button onclick="qiRows.splice('+i+',1);renderQIRows();updateQISummary()" '+
-        'style="width:22px;height:22px;border:1px solid var(--red-l);background:var(--red-l);'+
-        'border-radius:5px;cursor:pointer;color:var(--red);font-size:14px;'+
-        'display:flex;align-items:center;justify-content:center;padding:0">×</button>'+
-    '</div>';
-  }).join('');
-};
-
-window.onQIProdChange = function(i, pid) {
-  if (!pid) return;
-  var p = S.products.find(function(x){ return x.id===pid; });
-  if (!p) return;
-  qiRows[i].product_id  = pid;
-  qiRows[i].description = p.name;
-  qiRows[i].cost_price  = p.cost_price || 0;
-  qiRows[i].unit_price  = (p.price && p.price > p.cost_price) ? p.price : 0;
-  renderQIRows();
-  updateQISummary();
-};
-
-// Поправяме header колоните
-setTimeout(function(){
-  var hdr = document.querySelector('[style*="grid-template-columns:1fr 100px 65px 75px 75px 22px"]');
-  if (hdr) hdr.style.gridTemplateColumns = '1fr 100px 60px 85px 22px';
-}, 200);
-
-console.log('✅ renderQIRows финална версия');
+console.log('✅ Минимална поправка — себестойността е скрита');
 </script>
