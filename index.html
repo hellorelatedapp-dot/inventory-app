@@ -11670,3 +11670,116 @@ window.render_dashboard = function(el) {
 
 console.log('✅ PDF артикули + DD/MM/YYYY дати поправени');
 </script>
+
+<script>
+'use strict';
+// ════════════════════════════════════════════
+// ОФЕРТА — ФИНАЛНА ПОПРАВКА v2
+// ════════════════════════════════════════════
+window.saveQuote = async function() {
+  var clientId = document.getElementById('mq-client')?.value;
+  if (!clientId) { toast('Избери клиент', 'err'); return; }
+
+  var rows  = typeof qiRows !== 'undefined' ? qiRows : [];
+  var totalP = rows.reduce(function(s,r){ return s+(+r.unit_price||0)*(+r.quantity||0); }, 0);
+  var totalC = rows.reduce(function(s,r){ return s+(+r.cost_price||0)*(+r.quantity||0); }, 0);
+  var deliv  = +document.getElementById('mq-deliv-price')?.value || 0;
+
+  var payload = {
+    client_id:       clientId,
+    event_type:      document.getElementById('mq-type')?.value        || null,
+    event_date:      document.getElementById('mq-date')?.value        || null,
+    event_time:      document.getElementById('mq-time')?.value        || null,
+    address:         document.getElementById('mq-addr')?.value.trim() || null,
+    guests:         +document.getElementById('mq-guests')?.value      || 20,
+    has_delivery:    document.getElementById('mq-delivery')?.checked  || false,
+    has_assembly:    document.getElementById('mq-assembly')?.checked  || false,
+    has_disassembly: document.getElementById('mq-disassembly')?.checked || false,
+    delivery_price:  deliv,
+    total_price:     totalP + deliv,
+    total_cost:      totalC,
+    deposit_amount: +document.getElementById('mq-deposit')?.value     || 0,
+    notes:           document.getElementById('mq-notes')?.value.trim() || null,
+    status: editId.quote
+      ? (S.quotes.find(function(q){ return q.id===editId.quote; })?.status || 'draft')
+      : 'draft'
+  };
+
+  var depDue = document.getElementById('mq-dep-due')?.value;
+  var validUnt = document.getElementById('mq-valid')?.value;
+  if (depDue)   payload.deposit_due_date = depDue;
+  if (validUnt) payload.valid_until      = validUnt;
+
+  try {
+    var qid = editId.quote;
+
+    if (editId.quote) {
+      // Обновяване
+      var upd = await db.from('quotes').update(payload).eq('id', editId.quote);
+      if (upd.error) throw new Error('Грешка при обновяване: ' + upd.error.message);
+      await db.from('quote_items').delete().eq('quote_id', editId.quote);
+
+    } else {
+      // Нова оферта — използваме select() за да получим ID-то
+      var ins = await db.from('quotes')
+        .insert(payload)
+        .select('id')
+        .single();
+
+      if (ins.error) throw new Error('Грешка при запис: ' + ins.error.message);
+
+      qid = ins.data?.id;
+
+      // Ако пак не е получено — търсим последно вмъкнатото
+      if (!qid) {
+        var last = await db.from('quotes')
+          .select('id')
+          .eq('client_id', clientId)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .single();
+        qid = last.data?.id;
+      }
+    }
+
+    console.log('Quote ID:', qid, '| Items:', rows.length);
+
+    if (!qid) throw new Error('Не получих ID на офертата');
+
+    // Записваме артикулите
+    if (rows.length > 0) {
+      var itemsToInsert = rows
+        .filter(function(r){ return r.description || r.unit_price > 0; })
+        .map(function(r){
+          return {
+            quote_id:    qid,
+            product_id:  r.product_id  || null,
+            description: r.description || '',
+            section:     r.section     || 'Декорация',
+            quantity:    +r.quantity   || 1,
+            unit_price:  +r.unit_price || 0,
+            cost_price:  +r.cost_price || 0,
+          };
+        });
+
+      if (itemsToInsert.length > 0) {
+        var insI = await db.from('quote_items').insert(itemsToInsert);
+        if (insI.error) {
+          console.warn('quote_items warning:', insI.error.message);
+          toast('⚠️ Офертата е записана, но артикулите имат проблем', 'err');
+        }
+      }
+    }
+
+    await dbLoad('quotes','quotes','created_at','*,clients(name,phone),quote_items(*)',{asc:false});
+    cm('mod-quote');
+    toast('✅ Офертата е записана!', 'ok');
+    go('quotes');
+
+  } catch(e) {
+    console.error('saveQuote v2 грешка:', e);
+    toast('Грешка: ' + e.message, 'err');
+  }
+};
+console.log('✅ saveQuote v2 зареден');
+</script>
