@@ -11496,3 +11496,177 @@ setTimeout(function(){
 
 console.log('✅ Оферти + Дати DD/MM/YYYY поправени');
 </script>
+
+<script>
+'use strict';
+// ════════════════════════════════════════════
+// PDF ПОПРАВКА + ДАТИ DD/MM/YYYY
+// ════════════════════════════════════════════
+
+// ── Помощни функции за дати ──────────────────
+window.bgDate = function(d) {
+  if (!d) return '—';
+  var m = String(d).match(/^(\d{4})-(\d{2})-(\d{2})/);
+  return m ? m[3]+'/'+m[2]+'/'+m[1] : d;
+};
+window.bgTime = function(t) {
+  if (!t) return '';
+  return String(t).slice(0,5);
+};
+
+// ── Patch printQuote с артикули + BG дати ────
+window.printQuote = async function(qid) {
+  // Зареждаме офертата директно от Supabase за да имаме quote_items
+  var res = await db.from('quotes')
+    .select('*,clients(name,phone,email),quote_items(*)')
+    .eq('id', qid).single();
+
+  var q  = res.data;
+  if (!q) { toast('Офертата не е намерена', 'err'); return; }
+  var cl    = q.clients;
+  var items = q.quote_items || [];
+  var total = q.total_price || 0;
+  var dep   = q.deposit_amount || 0;
+  var deliv = q.delivery_price || 0;
+
+  var win = window.open('','_blank');
+  win.document.write('<!DOCTYPE html><html lang="bg"><head><meta charset="UTF-8">'+
+  '<title>Оферта — '+(cl?cl.name:'')+'</title>'+
+  '<style>'+
+  '*{box-sizing:border-box;margin:0;padding:0}'+
+  'body{font-family:Georgia,serif;color:#1c1118;background:#fff;padding:40px}'+
+  '.header{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:3px solid #c9748a;padding-bottom:20px;margin-bottom:24px}'+
+  '.brand{font-size:26px;font-weight:700;color:#c9748a}'+
+  '.brand-sub{font-size:12px;color:#6b4f5a;margin-top:3px}'+
+  'h2{font-size:15px;color:#c9748a;margin:20px 0 8px;border-bottom:1px solid #f2d5dc;padding-bottom:4px}'+
+  '.info-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px}'+
+  '.info-block{background:#fdf6f8;border-radius:8px;padding:12px}'+
+  '.info-label{font-size:10px;text-transform:uppercase;letter-spacing:.5px;color:#6b4f5a;margin-bottom:3px}'+
+  '.info-value{font-size:14px;font-weight:600}'+
+  'table{width:100%;border-collapse:collapse;margin-bottom:16px}'+
+  'th{background:#fdf6f8;padding:8px 10px;text-align:left;font-size:11px;text-transform:uppercase;color:#6b4f5a;border-bottom:2px solid #f2d5dc}'+
+  'td{padding:9px 10px;border-bottom:1px solid #f5e8ec;font-size:13px}'+
+  '.total-box{background:#fdf6f8;border-radius:10px;padding:16px;margin-bottom:24px}'+
+  '.total-row{display:flex;justify-content:space-between;margin-bottom:6px;font-size:13px}'+
+  '.total-final{font-size:18px;font-weight:700;color:#c9748a;border-top:2px solid #c9748a;padding-top:10px;margin-top:10px}'+
+  '.conditions{font-size:11px;color:#6b4f5a;line-height:1.7;margin-bottom:24px}'+
+  '.signature{display:grid;grid-template-columns:1fr 1fr;gap:40px;margin-top:40px}'+
+  '.sig-box{border-top:2px solid #1c1118;padding-top:8px;font-size:12px;color:#6b4f5a}'+
+  '.footer{text-align:center;font-size:10px;color:#b89aa4;margin-top:30px;border-top:1px solid #f2d5dc;padding-top:12px}'+
+  '@media print{body{padding:20px}.no-print{display:none}}'+
+  '</style></head><body>'+
+
+  '<div class="header">'+
+    '<div><div class="brand">🌸 Eleya Decor</div>'+
+    '<div class="brand-sub">Декорации за специални моменти · Казанлък</div></div>'+
+    '<div style="text-align:right">'+
+      '<div style="font-size:10px;text-transform:uppercase;color:#6b4f5a">Оферта №</div>'+
+      '<div style="font-size:18px;font-weight:700">'+qid.slice(-6).toUpperCase()+'</div>'+
+      '<div style="font-size:11px;color:#6b4f5a;margin-top:3px">Дата: '+bgDate(today())+'</div>'+
+    '</div>'+
+  '</div>'+
+
+  '<div class="info-grid">'+
+    '<div class="info-block">'+
+      '<div class="info-label">Клиент</div>'+
+      '<div class="info-value">'+(cl?cl.name:'—')+'</div>'+
+      (cl&&cl.phone?'<div style="font-size:12px;color:#6b4f5a;margin-top:3px">📞 '+cl.phone+'</div>':'')+
+      (cl&&cl.email?'<div style="font-size:12px;color:#6b4f5a;">✉️ '+cl.email+'</div>':'')+
+    '</div>'+
+    '<div class="info-block">'+
+      '<div class="info-label">Събитие</div>'+
+      '<div class="info-value">'+(q.event_type||'—')+'</div>'+
+      (q.event_date?'<div style="font-size:12px;color:#6b4f5a;margin-top:3px">📅 '+bgDate(q.event_date)+(q.event_time?' · '+bgTime(q.event_time):'')+'</div>':'')+
+      (q.address?'<div style="font-size:12px;color:#6b4f5a;">📍 '+q.address+'</div>':'')+
+    '</div>'+
+    (q.guests?'<div class="info-block"><div class="info-label">Брой гости</div><div class="info-value">👥 '+q.guests+' гости</div></div>':'')+
+    (q.valid_until?'<div class="info-block"><div class="info-label">Валидна до</div><div class="info-value">'+bgDate(q.valid_until)+'</div></div>':'')+
+  '</div>'+
+
+  '<h2>Артикули и услуги</h2>'+
+  '<table><thead><tr>'+
+    '<th>Описание</th><th>Раздел</th>'+
+    '<th style="text-align:right">Бр.</th>'+
+    '<th style="text-align:right">Ед. цена</th>'+
+    '<th style="text-align:right">Общо</th>'+
+  '</tr></thead><tbody>'+
+  (items.length > 0
+    ? items.map(function(i){
+        return '<tr>'+
+          '<td><strong>'+(i.description||i.name||'—')+'</strong></td>'+
+          '<td style="font-size:11px;color:#6b4f5a">'+(i.section||'—')+'</td>'+
+          '<td style="text-align:right">'+(i.quantity||0)+'</td>'+
+          '<td style="text-align:right">'+eur(i.unit_price||0)+'</td>'+
+          '<td style="text-align:right;font-weight:600">'+eur((i.unit_price||0)*(i.quantity||0))+'</td>'+
+        '</tr>';
+      }).join('')
+    : '<tr><td colspan="5" style="text-align:center;color:#b89aa4;font-style:italic">— Без конкретни артикули —</td></tr>')+
+  (deliv>0?'<tr><td>🚚 Транспорт</td><td style="font-size:11px;color:#6b4f5a">Услуги</td><td style="text-align:right">1</td><td style="text-align:right">'+eur(deliv)+'</td><td style="text-align:right;font-weight:600">'+eur(deliv)+'</td></tr>':'')+
+  '</tbody></table>'+
+
+  '<div class="total-box">'+
+    '<div class="total-row"><span>Обща сума</span><span>'+eur(total)+'</span></div>'+
+    (dep>0?'<div class="total-row"><span>Депозит (аванс)</span><span style="color:#c9748a">'+eur(dep)+'</span></div>':'')+
+    (dep>0?'<div class="total-row"><span>Остатък</span><span>'+eur(total-dep)+'</span></div>':'')+
+    '<div class="total-row total-final"><span>ОБЩА СУМА</span><span>'+eur(total)+'</span></div>'+
+  '</div>'+
+
+  (q.notes?'<div class="conditions"><strong>Бележки:</strong><br>'+q.notes+'</div>':'')+
+
+  '<div class="conditions">'+
+    '<strong>Условия:</strong><br>'+
+    '• Офертата е валидна до '+(q.valid_until?bgDate(q.valid_until):'7 дни от датата на издаване')+'.<br>'+
+    (dep>0?'• Депозитът от '+eur(dep)+' е дължим при потвърждение на офертата.<br>':'')+
+    '• Остатъкът се заплаща в деня на събитието.<br>'+
+    '• При анулиране до 14 дни — депозитът се връща. До 7 дни — 50%. По-малко от 7 дни — не се връща.<br>'+
+    '• Визуализациите са интелектуална собственост на Eleya Decor.'+
+  '</div>'+
+
+  '<div class="signature">'+
+    '<div class="sig-box">Изготвил: Eleya Decor<br><br><br>Подпис: _______________<br>Дата: _______________</div>'+
+    '<div class="sig-box">Клиент: '+(cl?cl.name:'_______________')+'<br><br><br>Подпис: _______________<br>Дата: _______________</div>'+
+  '</div>'+
+
+  '<div class="footer">Eleya Decor · Декорации за специални моменти · Казанлък, България<br>'+
+  'Генерирано: '+bgDate(today())+'</div>'+
+
+  '<div class="no-print" style="margin-top:20px;text-align:center">'+
+    '<button onclick="window.print()" style="padding:10px 24px;background:#c9748a;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:14px;font-weight:600">'+
+    '🖨 Принтирай / Запази като PDF</button>'+
+  '</div>'+
+  '</body></html>');
+  win.document.close();
+};
+
+// ── Patch за дати в оферти списъка ───────────────────────────
+var _origRQ2 = window.render_quotes;
+window.render_quotes = function(el) {
+  _origRQ2(el);
+  setTimeout(function(){
+    el.querySelectorAll('div,td,span').forEach(function(node){
+      if (node.children.length > 0) return;
+      var t = node.textContent;
+      if (/^\d{4}-\d{2}-\d{2}/.test(t.trim())) {
+        node.textContent = t.replace(/(\d{4})-(\d{2})-(\d{2})/g, function(_,y,m,d){ return d+'/'+m+'/'+y; });
+      }
+    });
+  }, 100);
+};
+
+// ── Patch за дати в dashboard ─────────────────────────────────
+var _origRDash5 = window.render_dashboard;
+window.render_dashboard = function(el) {
+  _origRDash5(el);
+  setTimeout(function(){
+    el.querySelectorAll('div,td,span').forEach(function(node){
+      if (node.children.length > 0) return;
+      var t = node.textContent;
+      if (/\d{4}-\d{2}-\d{2}/.test(t)) {
+        node.textContent = t.replace(/(\d{4})-(\d{2})-(\d{2})/g, function(_,y,m,d){ return d+'/'+m+'/'+y; });
+      }
+    });
+  }, 150);
+};
+
+console.log('✅ PDF артикули + DD/MM/YYYY дати поправени');
+</script>
