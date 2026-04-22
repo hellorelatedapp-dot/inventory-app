@@ -11783,3 +11783,27 @@ window.saveQuote = async function() {
 };
 console.log('✅ saveQuote v2 зареден');
 </script>
+
+<script>
+'use strict';
+// Поправка — product_id празен string → null
+var _sqv3 = window.saveQuote;
+window.saveQuote = async function() {
+  // Почистваме qiRows преди запис
+  if (typeof qiRows !== 'undefined') {
+    qiRows = qiRows.map(function(r) {
+      var clean = Object.assign({}, r);
+      // UUID полета — празен string → null
+      if (!clean.product_id || clean.product_id === '') clean.product_id = null;
+      if (!clean.quote_id   || clean.quote_id   === '') clean.quote_id   = null;
+      // Числа
+      clean.quantity   = +clean.quantity  || 1;
+      clean.unit_price = +clean.unit_price || 0;
+      clean.cost_price = +clean.cost_price || 0;
+      return clean;
+    });
+  }
+  return _sqv3();
+};
+console.log('✅ qiRows cleanup зареден');
+</script>
