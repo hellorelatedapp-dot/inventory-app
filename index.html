@@ -10698,3 +10698,132 @@ window.selectQAType = function(val) {
 
 console.log('✅ Типове артикули + Инвентар стойност + Автоматични движения заредени!');
 </script>
+
+<script>
+'use strict';
+// ════════════════════════════════════════════
+// ПОПРАВКА — dbLoad limit за продукти
+// ════════════════════════════════════════════
+
+// Презаписваме dbLoad с по-голям limit за products
+var _origDbLoad = window.dbLoad;
+window.dbLoad = async function(key, table, order, select, opts) {
+  order  = order  || 'created_at';
+  select = select || '*';
+  opts   = opts   || {};
+
+  // За products увеличаваме лимита значително
+  if (table === 'products') {
+    opts = Object.assign({}, opts, { limit: 5000 });
+  }
+
+  var asc   = opts.asc !== undefined ? opts.asc : true;
+  var limit = opts.limit || 500;
+
+  try {
+    var result = await db.from(table)
+      .select(select)
+      .order(order, { ascending: order === 'name' ? true : asc })
+      .limit(limit);
+    S[key] = result.data || [];
+  } catch(e) {
+    console.error('dbLoad error:', table, e);
+    S[key] = S[key] || [];
+  }
+};
+
+// Презареждаме продуктите веднага с новия лимит
+(async function reloadProducts() {
+  try {
+    var result = await db.from('products')
+      .select('*,categories(name,color),suppliers(name)')
+      .order('name', { ascending: true })
+      .limit(5000);
+    S.products = result.data || [];
+    console.log('✅ Продукти презаредени:', S.products.length, 'артикула');
+    updateBadges();
+    // Ако сме на инвентар страница — рефрешваме
+    if (typeof curPage !== 'undefined' && curPage === 'inventory') {
+      go('inventory');
+    }
+  } catch(e) {
+    console.error('Reload products error:', e);
+  }
+})();
+
+// Поправяме confirmImport да записва с по-добра грешка обработка
+window.confirmImport = async function() {
+  var selected = importItems ? importItems.filter(function(i){ return i._selected; }) : [];
+  if (!selected.length) { toast('Избери поне един артикул', 'err'); return; }
+
+  var btn = document.querySelector('[onclick="confirmImport()"]');
+  if (btn) { btn.textContent = '⏳ Записвам...'; btn.disabled = true; }
+
+  var errors = 0, added = 0, updated = 0;
+
+  for (var item of selected) {
+    try {
+      // Проверка по наименование
+      var existing = S.products.find(function(p){
+        return (p.name||'').toLowerCase().trim() === (item.name||'').toLowerCase().trim();
+      });
+
+      if (existing) {
+        var res = await db.from('products').update({
+          quantity: (existing.quantity||0) + (item.quantity||0),
+          cost_price: item.price_eur > 0 ? item.price_eur : (existing.cost_price||0),
+        }).eq('id', existing.id);
+        if (res.error) throw res.error;
+        updated++;
+      } else {
+        var ins = await db.from('products').insert({
+          name:         (item.name||'Артикул').trim(),
+          quantity:     item.quantity || 0,
+          unit:         item.unit || 'бр',
+          price:        item.price_eur || 0,
+          cost_price:   item.price_eur || 0,
+          status:       'available',
+          notes:        [
+            item.name_original && item.name_original !== item.name ? 'Оригинал: '+item.name_original : '',
+            item.category ? 'Категория: '+item.category : '',
+            item.size ? 'Размер: '+item.size : '',
+          ].filter(Boolean).join(' · ') || null,
+          image_url:    item.image_url || null,
+          location:     'Склад',
+          product_type: item.category && item.category.toLowerCase().includes('геmar') ? 'consumable' : 'consumable',
+          supplier_id:  null,
+        });
+        if (ins.error) throw ins.error;
+        added++;
+      }
+    } catch(e) {
+      console.error('Import error for:', item.name, e);
+      errors++;
+    }
+  }
+
+  // Презареждаме с новия лимит
+  var reloaded = await db.from('products')
+    .select('*,categories(name,color),suppliers(name)')
+    .order('name', { ascending: true })
+    .limit(5000);
+  S.products = reloaded.data || [];
+
+  if (btn) { btn.textContent = '✅ Добави в инвентара'; btn.disabled = false; }
+
+  var msg = [];
+  if (added)   msg.push(added + ' нови');
+  if (updated) msg.push(updated + ' обновени');
+  if (errors)  msg.push(errors + ' грешки');
+
+  toast((errors ? '⚠️' : '✅') + ' ' + msg.join(' · '), errors ? 'err' : 'ok');
+
+  if (typeof clearImport === 'function') clearImport();
+  updateBadges();
+
+  // Навигираме към инвентара
+  setTimeout(function(){ go('inventory'); }, 500);
+};
+
+console.log('✅ dbLoad limit поправен — products до 5000 артикула');
+</script>
