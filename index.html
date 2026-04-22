@@ -11890,3 +11890,74 @@ window.om = function(id) {
 
 console.log('✅ Цени поправени: cost скрит, unit_price = продажна');
 </script>
+
+<script>
+'use strict';
+// ════════════════════════════════════════════
+// ПОПРАВКА — renderQIRows работи правилно
+// ════════════════════════════════════════════
+
+// Директно patch — не wrap, а замяна
+window.renderQIRows = function() {
+  var el = document.getElementById('qi-rows');
+  if (!el) return;
+
+  if (!qiRows || qiRows.length === 0) {
+    el.innerHTML = '<p style="font-size:12px;color:var(--ink-l);margin-bottom:6px">Добави артикули с бутоните по-долу</p>';
+    return;
+  }
+
+  el.innerHTML = qiRows.map(function(r, i) {
+    var productOptions = '<option value="">— или въведи описание —</option>' +
+      S.products.map(function(p){
+        return '<option value="'+p.id+'"'+(p.id===r.product_id?' selected':'')+'>'+p.name+'</option>';
+      }).join('');
+
+    return '<div style="display:grid;grid-template-columns:1fr 100px 65px 90px 22px;gap:5px;margin-bottom:5px;align-items:center">'+
+      '<div>'+
+        '<select onchange="onQIProdChange('+i+',this.value)" '+
+          'style="width:100%;padding:5px 7px;border:1.5px solid var(--border);border-radius:6px;font-size:11px;background:var(--card);color:var(--ink);margin-bottom:3px">'+
+          productOptions+
+        '</select>'+
+        '<input value="'+(r.description||'')+'" placeholder="Описание..." '+
+          'onchange="qiRows['+i+'].description=this.value" '+
+          'style="width:100%;padding:5px 7px;border:1.5px solid var(--border);border-radius:6px;font-size:11px;background:var(--card);color:var(--ink)">'+
+      '</div>'+
+      '<select onchange="qiRows['+i+'].section=this.value" '+
+        'style="padding:5px 6px;border:1.5px solid var(--border);border-radius:6px;font-size:11px;background:var(--card);color:var(--ink)">'+
+        ['Декорация','Балони','Маси','Оборудване','Услуги'].map(function(s){
+          return '<option'+(r.section===s?' selected':'')+'>'+s+'</option>';
+        }).join('')+
+      '</select>'+
+      '<input type="number" min="1" value="'+(r.quantity||1)+'" '+
+        'onchange="qiRows['+i+'].quantity=+this.value||1;updateQISummary()" '+
+        'style="padding:5px;border:1.5px solid var(--border);border-radius:6px;font-size:11px;text-align:center;background:var(--card);color:var(--ink)">'+
+      // Само продажна цена — cost_price е скрита
+      '<input type="number" min="0" step="0.01" value="'+(r.unit_price||0)+'" '+
+        'placeholder="Цена" '+
+        'onchange="qiRows['+i+'].unit_price=+this.value||0;updateQISummary()" '+
+        'style="padding:5px;border:1.5px solid var(--border);border-radius:6px;font-size:11px;text-align:center;background:var(--card);color:var(--ink)">'+
+      '<button onclick="qiRows.splice('+i+',1);renderQIRows();updateQISummary()" '+
+        'style="width:22px;height:22px;border:1px solid var(--red-l);background:var(--red-l);'+
+        'border-radius:5px;cursor:pointer;color:var(--red);font-size:14px;'+
+        'display:flex;align-items:center;justify-content:center;padding:0">×</button>'+
+    '</div>';
+  }).join('');
+};
+
+// Patch onQIProdChange
+window.onQIProdChange = function(i, pid) {
+  var p = pid ? S.products.find(function(x){ return x.id===pid; }) : null;
+  if (p) {
+    qiRows[i].product_id  = pid;
+    qiRows[i].description = p.name;
+    qiRows[i].cost_price  = p.cost_price || 0;
+    // Продажна цена: ако има p.price различна от cost → използваме, иначе 0
+    qiRows[i].unit_price  = (p.price && p.price !== p.cost_price) ? p.price : 0;
+  }
+  renderQIRows();
+  updateQISummary();
+};
+
+console.log('✅ renderQIRows поправен — само продажна цена');
+</script>
