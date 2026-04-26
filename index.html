@@ -7525,3 +7525,303 @@ window.render_handmade = function(el) {
 
 console.log('✅ Handmade modal + THEME_STATUS + tsTab добавени!');
 </script>
+
+<script>
+'use strict';
+// ═══════════════════════════════════════════
+// HANDMADE MODAL — с тип употреба + наем
+// ═══════════════════════════════════════════
+
+window.openHandmadeModal = function(id) {
+  id = id || null;
+  buildHandmadeModal();
+  editId.handmade = id;
+  const p = id ? S.products.find(x => x.id===id) : null;
+
+  document.getElementById('mhm-title').textContent = id ? 'Редактирай handmade' : 'Нов Handmade продукт';
+  document.getElementById('mhm-name').value       = p?.name          || '';
+  document.getElementById('mhm-type').value       = p?.handmade_type || 'candle';
+  document.getElementById('mhm-qty').value        = p?.quantity      || 0;
+  document.getElementById('mhm-min').value        = p?.min_quantity  || 5;
+  document.getElementById('mhm-unit').value       = p?.unit          || 'бр';
+  document.getElementById('mhm-cost').value       = p?.cost_price    || 0;
+  document.getElementById('mhm-price').value      = p?.price         || 0;
+  document.getElementById('mhm-rental').value     = p?.rental_price  || 0;
+  document.getElementById('mhm-notes').value      = p?.notes         || '';
+  document.getElementById('mhm-image').value      = p?.image_url     || '';
+  document.getElementById('mhm-del').style.display = id ? 'inline-flex' : 'none';
+
+  // Тип употреба
+  const usage = p?.product_type || 'handmade';
+  document.querySelectorAll('[name="mhm-usage"]').forEach(r => {
+    r.checked = r.value === usage;
+  });
+  toggleRentalField(usage);
+  updateHMCalc();
+  om('mod-handmade');
+};
+
+function buildHandmadeModal() {
+  // Винаги rebuild за да имаме свежа форма
+  const old = document.getElementById('mod-handmade');
+  if (old) old.remove();
+
+  const m = document.createElement('div');
+  m.id = 'mod-handmade'; m.className = 'overlay'; m.style.display='none';
+  m.innerHTML = `<div class="modal" style="width:560px">
+    <div class="modal-hdr">
+      <h3 id="mhm-title">Нов Handmade продукт</h3>
+      <button class="close-btn" onclick="cm('mod-handmade')">×</button>
+    </div>
+
+    <!-- Тип употреба -->
+    <div style="background:var(--rose-ll);border-radius:var(--r-sm);padding:12px;margin-bottom:12px">
+      <label style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--ink-m);display:block;margin-bottom:8px">Тази фигура/продукт е за:</label>
+      <div style="display:flex;gap:10px;flex-wrap:wrap">
+        <label style="display:flex;align-items:center;gap:6px;font-size:13px;font-weight:600;cursor:pointer;padding:7px 12px;border-radius:var(--r-sm);border:1.5px solid var(--border);background:var(--card)">
+          <input type="radio" name="mhm-usage" value="handmade" checked style="accent-color:var(--rose);width:auto" onchange="toggleRentalField(this.value)">
+          🌸 Продажба
+        </label>
+        <label style="display:flex;align-items:center;gap:6px;font-size:13px;font-weight:600;cursor:pointer;padding:7px 12px;border-radius:var(--r-sm);border:1.5px solid var(--border);background:var(--card)">
+          <input type="radio" name="mhm-usage" value="rental" style="accent-color:var(--rose);width:auto" onchange="toggleRentalField(this.value)">
+          🎭 Наем
+        </label>
+        <label style="display:flex;align-items:center;gap:6px;font-size:13px;font-weight:600;cursor:pointer;padding:7px 12px;border-radius:var(--r-sm);border:1.5px solid var(--border);background:var(--card)">
+          <input type="radio" name="mhm-usage" value="asset_rental" style="accent-color:var(--rose);width:auto" onchange="toggleRentalField(this.value)">
+          🌸🎭 Продажба + Наем
+        </label>
+        <label style="display:flex;align-items:center;gap:6px;font-size:13px;font-weight:600;cursor:pointer;padding:7px 12px;border-radius:var(--r-sm);border:1.5px solid var(--border);background:var(--card)">
+          <input type="radio" name="mhm-usage" value="asset" style="accent-color:var(--rose);width:auto" onchange="toggleRentalField(this.value)">
+          🏛 Реквизит (многократен)
+        </label>
+      </div>
+    </div>
+
+    <div class="fr">
+      <div class="fg"><label>Наименование *</label><input id="mhm-name" placeholder="Минни Маус фигура 80см"></div>
+      <div class="fg"><label>Тип Handmade</label>
+        <select id="mhm-type">
+          <option value="candle">🕯️ Свещ</option>
+          <option value="soap">🧼 Биосапун</option>
+          <option value="bouquet">💐 Букет сапунен</option>
+          <option value="clay">🏺 Полимерна глина</option>
+          <option value="sign">✍️ Надпис 3D</option>
+          <option value="figure">🎭 Фигура</option>
+          <option value="gift">🎁 Подаръче</option>
+          <option value="other">📦 Друго</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="fr3">
+      <div class="fg"><label>Наличност</label><input type="number" id="mhm-qty" value="1" min="0"></div>
+      <div class="fg"><label>Минимум</label><input type="number" id="mhm-min" value="1" min="0"></div>
+      <div class="fg"><label>Мерна ед.</label>
+        <select id="mhm-unit"><option>бр</option><option>компл.</option><option>букет</option><option>кутия</option></select>
+      </div>
+    </div>
+
+    <div class="fr">
+      <div class="fg"><label>Себестойност (€)</label>
+        <input type="number" id="mhm-cost" value="0" min="0" step="0.01" oninput="updateHMCalc()">
+      </div>
+      <div class="fg"><label>Продажна цена (€)</label>
+        <input type="number" id="mhm-price" value="0" min="0" step="0.01" oninput="updateHMCalc()">
+      </div>
+    </div>
+
+    <!-- Наемна цена — показва се само при rental/asset_rental -->
+    <div id="mhm-rental-wrap" style="display:none">
+      <div class="fg">
+        <label>Наемна цена (€/събитие)</label>
+        <input type="number" id="mhm-rental" value="0" min="0" step="0.50"
+          style="border-color:var(--rose)" placeholder="Напр. 20.00">
+        <div style="font-size:10px;color:var(--ink-m);margin-top:3px">Цената за наем на едно събитие · депозит се добавя при наема</div>
+      </div>
+    </div>
+
+    <!-- Марж калкулатор -->
+    <div id="mhm-calc" style="background:var(--rose-ll);border-radius:var(--r-sm);padding:10px 12px;margin-bottom:10px;display:none">
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;text-align:center">
+        <div><div style="font-size:10px;color:var(--ink-m)">Себестойност</div><div id="mhm-c-cost" style="font-size:16px;font-weight:900;color:var(--red)">—</div></div>
+        <div><div style="font-size:10px;color:var(--ink-m)">Препоръчана ×2.5</div><div id="mhm-c-rec" style="font-size:16px;font-weight:900;color:var(--amber)">—</div></div>
+        <div><div style="font-size:10px;color:var(--ink-m)">Марж</div><div id="mhm-c-margin" style="font-size:16px;font-weight:900;color:var(--green)">—</div></div>
+      </div>
+    </div>
+
+    <div class="fg"><label>Локация в склада</label>
+      <input id="mhm-location" placeholder="Напр. Кутия А3 · Рафт 2 · Голям склад">
+    </div>
+
+    <div class="fg"><label>Съставки / Описание (печата се на етикета)</label>
+      <textarea id="mhm-notes" rows="2" placeholder="Пчелен восък, ванилия · Гори ~30ч · Ръчно изработен"></textarea>
+    </div>
+
+    <div class="fg"><label>Снимка (URL)</label>
+      <input id="mhm-image" placeholder="https://...">
+    </div>
+
+    <div class="form-actions">
+      <button class="btn btn-secondary" onclick="cm('mod-handmade')">Отказ</button>
+      <button id="mhm-del" class="btn btn-danger" style="display:none" onclick="delHandmade()">🗑 Изтрий</button>
+      <button class="btn btn-primary" onclick="saveHandmadeProduct()">Запази</button>
+    </div>
+  </div>`;
+  m.addEventListener('click', e => { if(e.target===m) cm('mod-handmade'); });
+  document.body.appendChild(m);
+}
+
+function toggleRentalField(val) {
+  const wrap = document.getElementById('mhm-rental-wrap');
+  if (wrap) wrap.style.display = (val==='rental'||val==='asset_rental') ? 'block' : 'none';
+}
+
+function updateHMCalc() {
+  const cost  = +document.getElementById('mhm-cost')?.value  || 0;
+  const price = +document.getElementById('mhm-price')?.value || 0;
+  const div   = document.getElementById('mhm-calc');
+  if (!div) return;
+  div.style.display = (cost > 0 || price > 0) ? 'block' : 'none';
+  const rec    = cost * 2.5;
+  const margin = price > 0 && cost > 0 ? Math.round((1-cost/price)*100) : 0;
+  const cc  = document.getElementById('mhm-c-cost');
+  const cr  = document.getElementById('mhm-c-rec');
+  const cm2 = document.getElementById('mhm-c-margin');
+  if (cc)  cc.textContent  = eur(cost);
+  if (cr)  cr.textContent  = eur(rec);
+  if (cm2) { cm2.textContent = margin+'%'; cm2.style.color = margin>=50?'var(--green)':margin>=30?'var(--amber)':'var(--red)'; }
+}
+
+async function saveHandmadeProduct() {
+  const name = document.getElementById('mhm-name')?.value.trim();
+  if (!name) { toast('Въведи наименование', 'err'); return; }
+
+  const usageEl = document.querySelector('[name="mhm-usage"]:checked');
+  const usage   = usageEl?.value || 'handmade';
+
+  const payload = {
+    name,
+    product_type:  usage,                // handmade | rental | asset_rental | asset
+    handmade_type: document.getElementById('mhm-type')?.value     || 'other',
+    quantity:     +document.getElementById('mhm-qty')?.value       || 1,
+    min_quantity: +document.getElementById('mhm-min')?.value       || 1,
+    unit:          document.getElementById('mhm-unit')?.value      || 'бр',
+    cost_price:   +document.getElementById('mhm-cost')?.value      || 0,
+    price:        +document.getElementById('mhm-price')?.value     || 0,
+    rental_price: +document.getElementById('mhm-rental')?.value    || 0,
+    notes:         document.getElementById('mhm-notes')?.value.trim() || null,
+    image_url:     document.getElementById('mhm-image')?.value.trim() || null,
+    location:      document.getElementById('mhm-location')?.value.trim() || null,
+    is_rentable:   (usage==='rental'||usage==='asset_rental'),
+    status:       'available',
+  };
+
+  try {
+    if (editId.handmade) {
+      const { error } = await db.from('products').update(payload).eq('id', editId.handmade);
+      if (error) throw error;
+    } else {
+      const { error } = await db.from('products').insert(payload);
+      if (error) throw error;
+    }
+    await dbLoad('products','products','name','*,categories(name,color),suppliers(name)');
+    cm('mod-handmade');
+
+    const typeLabel = usage==='rental'?'🎭 За наем':usage==='asset_rental'?'🌸🎭 Продажба+Наем':usage==='asset'?'🏛 Реквизит':'🌸 Handmade';
+    toast(`✅ ${name} е запазен като ${typeLabel}!`, 'ok');
+    go(curPage);
+  } catch(e) {
+    console.error('saveHandmade:', e);
+    toast('Грешка: ' + (e.message||e), 'err');
+  }
+}
+
+async function delHandmade() {
+  const id = editId.handmade;
+  if (!id || !confirm('Изтрий продукта?')) return;
+  await db.from('products').delete().eq('id', id);
+  await dbLoad('products','products','name','*,categories(name,color),suppliers(name)');
+  cm('mod-handmade');
+  toast('Продуктът е изтрит', 'ok');
+  go(curPage);
+}
+
+// Patch render_handmade — добавяме правилни бутони
+var _origHM2 = window.render_handmade;
+window.render_handmade = function(el) {
+  const prods = S.products.filter(p => p.product_type==='handmade'||p.handmade_type);
+  const counts = {};
+  Object.keys(HM_TYPES).forEach(k => counts[k] = prods.filter(p=>p.handmade_type===k).length);
+
+  el.innerHTML = `
+  <div class="topbar">
+    <h2>🌸 Handmade Studio <span style="font-size:13px;color:var(--ink-m);font-weight:400">${prods.length} продукта</span></h2>
+    <button class="btn btn-primary" onclick="openHandmadeModal()">+ Нов продукт</button>
+  </div>
+  <div class="content">
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px">
+      ${Object.entries(HM_TYPES).map(([k,t]) => `
+      <div class="stat-card" style="padding:10px 12px">
+        <div class="lbl">${t.l}</div>
+        <div class="val" style="font-size:20px;color:${t.color}">${counts[k]||0}</div>
+      </div>`).join('')}
+    </div>
+    ${prods.length === 0
+      ? '<div class="empty-state"><div class="ico">🌸</div><p>Няма handmade продукти</p><small>Натисни "+ Нов продукт" за да добавиш</small></div>'
+      : `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px">
+          ${prods.map(p => {
+            const ht = HM_TYPES[p.handmade_type||'other'] || HM_TYPES.other;
+            const margin = p.price>0&&p.cost_price>0 ? Math.round((1-p.cost_price/p.price)*100) : 0;
+            const usageBadge = p.product_type==='rental'
+              ? '<span class="badge bw">🎭 За наем</span>'
+              : p.product_type==='asset_rental'
+              ? '<span class="badge bm">🌸🎭 Продажба+Наем</span>'
+              : p.product_type==='asset'
+              ? '<span class="badge bb">🏛 Реквизит</span>'
+              : '<span class="badge bg">🌸 Handmade</span>';
+            return `<div class="table-wrap" style="padding:12px">
+              <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:6px">
+                <div style="flex:1;min-width:0">
+                  <div style="font-size:13px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escHtml(p.name)}</div>
+                  <div style="font-size:10px;color:${ht.color};margin-top:1px">${ht.l}</div>
+                </div>
+                <div style="font-size:20px;font-weight:900;color:${p.quantity===0?'var(--red)':'inherit'};flex-shrink:0;margin-left:6px">${p.quantity||0}</div>
+              </div>
+              <div style="margin-bottom:6px">${usageBadge}</div>
+              <div style="display:grid;grid-template-columns:1fr 1fr ${p.rental_price>0?'1fr':''};gap:5px;margin-bottom:8px;text-align:center">
+                <div style="background:var(--bg);border-radius:6px;padding:5px">
+                  <div style="font-size:11px;font-weight:700;color:var(--red)">${eur(p.cost_price||0)}</div>
+                  <div style="font-size:8px;color:var(--ink-l)">СЕБЕСТ.</div>
+                </div>
+                <div style="background:var(--bg);border-radius:6px;padding:5px">
+                  <div style="font-size:11px;font-weight:700;color:var(--green)">${eur(p.price||0)}</div>
+                  <div style="font-size:8px;color:var(--ink-l)">ЦЕНА</div>
+                </div>
+                ${p.rental_price>0?`<div style="background:var(--amber-l);border-radius:6px;padding:5px">
+                  <div style="font-size:11px;font-weight:700;color:var(--amber)">${eur(p.rental_price)}</div>
+                  <div style="font-size:8px;color:var(--ink-l)">НАЕМ</div>
+                </div>`:''}
+              </div>
+              ${p.location?`<div style="font-size:10px;color:var(--ink-m);margin-bottom:6px">📍 ${escHtml(p.location)}</div>`:''}
+              <div style="display:flex;gap:4px">
+                <button class="btn btn-secondary btn-sm" style="flex:1" onclick="quickMov('${p.id}')">± Кол.</button>
+                <button class="icon-btn" onclick="openHandmadeModal('${p.id}')">✏️</button>
+                <button class="icon-btn" onclick="generateInvBarcode('${p.id}')" title="Баркод">🏷️</button>
+                <button class="icon-btn danger" onclick="delHandmadeItem('${p.id}')">🗑</button>
+              </div>
+            </div>`;
+          }).join('')}
+        </div>`}
+  </div>`;
+};
+
+async function delHandmadeItem(id) {
+  if (!confirm('Изтрий продукта?')) return;
+  await db.from('products').delete().eq('id', id);
+  await dbLoad('products','products','name','*,categories(name,color),suppliers(name)');
+  toast('Изтрит ✅', 'ok');
+  go('handmade');
+}
+
+console.log('✅ Handmade v2 — с тип употреба (продажба/наем/реквизит) зареден!');
+</script>
