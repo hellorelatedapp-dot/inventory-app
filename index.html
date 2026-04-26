@@ -12,7 +12,6 @@
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌸</text></svg>">
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <style>
-<style>
 
 /* ═══════════════════════════════════════════
    CSS VARIABLES & RESET
@@ -598,8 +597,13 @@ async function loadNotifications() {
 function loadWeather() {
   const el = document.querySelector('.wx-widget');
   if (!el) return;
-  fetch('https://wttr.in/Kazanlak?format=3')
-    .then(r => r.text()).then(t => { if(el) el.textContent = '🌡️ ' + t.trim(); })
+  fetch('https://wttr.in/Kazanlak?format=%t+%C')
+    .then(r => r.text())
+    .then(t => {
+      const clean = t.trim().replace(/<[^>]+>/g, ''); // премахваме HTML тагове
+      if (el && clean && clean.length < 50) el.textContent = '🌡️ ' + clean;
+      else if (el) el.style.display = 'none';
+    })
     .catch(() => { if(el) el.style.display='none'; });
 }
 
