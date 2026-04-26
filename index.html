@@ -364,6 +364,9 @@ tr:hover td { background:var(--rose-ll); }
     <div class="nav-item" data-page="hourlyRate" onclick="go('hourlyRate')">⏱ Часова ставка</div>
     <div class="nav-item" data-page="viral"      onclick="go('viral')">🔗 Вирусен ефект</div>
     <div class="nav-item" data-page="bulgarian"  onclick="go('bulgarian')">🇧🇬 Bulgarian Story</div>
+    <div class="nav-section">Етикети & QR</div>
+    <div class="nav-item" data-page="qrLabels"   onclick="go('qrLabels')">🏷️ QR Етикети</div>
+    <div class="nav-item" data-page="packingList" onclick="go('packingList')">📋 Packing List</div>
     <div id="theme-toggle">
       <button class="btn btn-secondary btn-sm" style="width:100%" onclick="toggleTheme()">🌙 Тъмен режим</button>
     </div>
@@ -5432,22 +5435,7 @@ console.log('✅ Финални поправки v3: Клиенти · Dashboard
 (function addQuickAddNav() {
   var nav = document.getElementById('sidenav');
   if (!nav) return;
-  // Намираме "Импорт" секцията и добавяме след нея
-  var items = nav.querySelectorAll('.nav-item');
-  var importItem = null;
-  items.forEach(function(i){ if(i.dataset.page==='import') importItem=i; });
-
-  var item = document.createElement('div');
-  item.className = 'nav-item';
-  item.dataset.page = 'quickAdd';
-  item.onclick = function(){ go('quickAdd'); };
-  item.innerHTML = '<svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="14" height="14"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>Добави артикул';
-
-  if (importItem && importItem.nextSibling) {
-    nav.insertBefore(item, importItem.nextSibling);
-  } else {
-    nav.appendChild(item);
-  }
+  // quickAdd вече е в HTML навигацията — не добавяме отново
   PAGE_TITLES['quickAdd'] = 'Добави артикул';
 })();
 
@@ -6688,28 +6676,9 @@ console.log('✅ Всички липсващи модули добавени!');
 // ═══════════════════════════════════════════
 
 // Добавяме в навигацията
-(function addQRNav() {
-  const nav = document.getElementById('sidenav');
-  if (!nav) return;
-  const sec = document.createElement('div');
-  sec.className = 'nav-section';
-  sec.textContent = 'Етикети & QR';
-  const item1 = document.createElement('div');
-  item1.className = 'nav-item';
-  item1.dataset.page = 'qrLabels';
-  item1.onclick = () => go('qrLabels');
-  item1.innerHTML = '🏷️ QR Етикети';
-  const item2 = document.createElement('div');
-  item2.className = 'nav-item';
-  item2.dataset.page = 'packingList';
-  item2.onclick = () => go('packingList');
-  item2.innerHTML = '📋 Packing List';
-  nav.insertBefore(sec, nav.querySelector('#theme-toggle'));
-  nav.insertBefore(item1, nav.querySelector('#theme-toggle'));
-  nav.insertBefore(item2, nav.querySelector('#theme-toggle'));
-  PAGE_TITLES['qrLabels']   = 'QR Етикети';
-  PAGE_TITLES['packingList'] = 'Packing List';
-})();
+// QR nav е вече в HTML навигацията
+PAGE_TITLES['qrLabels']   = 'QR Етикети';
+PAGE_TITLES['packingList'] = 'Packing List';
 
 // ── Зареждаме QR библиотека ──────────────────
 async function loadQRLib() {
