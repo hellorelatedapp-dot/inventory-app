@@ -13,6 +13,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <style>
 <script>
+
 /* ═══════════════════════════════════════════
    CSS VARIABLES & RESET
 ═══════════════════════════════════════════ */
@@ -312,82 +313,8 @@ tr:hover td { background:var(--rose-ll); }
 
 /* DARK MODE TOGGLE */
 #theme-toggle { margin-top:auto; padding:12px 18px; border-top:1.5px solid var(--border); }
-</script>
-</style>
-</head>
-<body>
-<div id="app">
 
-  <!-- SIDENAV -->
-  <nav id="sidenav">
-    <div class="nav-brand">
-      <div class="nav-brand-logo">🌸</div>
-      <div>
-        <div class="nav-brand-text">Eleya Decor</div>
-        <div class="nav-brand-sub">Studio</div>
-      </div>
-    </div>
 
-    <div class="nav-section">Основно</div>
-    <div class="nav-item" data-page="dashboard"     onclick="go('dashboard')">📊 Табло</div>
-    <div class="nav-item" data-page="myDay"         onclick="go('myDay')">🌸 Моят ден</div>
-    <div class="nav-item" data-page="calendar"      onclick="go('calendar')">📅 Календар</div>
-    <div class="nav-item" data-page="notifications" onclick="go('notifications')">🔔 Известия <span class="nav-badge" id="nb-notif" style="display:none">0</span></div>
-
-    <div class="nav-section">Бизнес</div>
-    <div class="nav-item" data-page="clients"  onclick="go('clients')">👥 Клиенти</div>
-    <div class="nav-item" data-page="quotes"   onclick="go('quotes')">📋 Оферти <span class="nav-badge" id="nb-quotes" style="display:none">0</span></div>
-    <div class="nav-item" data-page="finances" onclick="go('finances')">💰 Финанси</div>
-    <div class="nav-item" data-page="reports"  onclick="go('reports')">📈 Отчети</div>
-
-    <div class="nav-section">Инвентар</div>
-    <div class="nav-item" data-page="inventory"  onclick="go('inventory')">📦 Инвентар</div>
-    <div class="nav-item" data-page="quickAdd"   onclick="go('quickAdd')">➕ Добави артикул</div>
-    <div class="nav-item" data-page="movements"  onclick="go('movements')">↕ Движения</div>
-    <div class="nav-item" data-page="import"     onclick="go('import')">📥 Импорт</div>
-    <div class="nav-item" data-page="suppliers"  onclick="go('suppliers')">🏭 Доставчици</div>
-
-    <div class="nav-section">Декорации</div>
-    <div class="nav-item" data-page="themes"      onclick="go('themes')">🎨 Теми</div>
-    <div class="nav-item" data-page="themeStudio" onclick="go('themeStudio')">✨ Theme Studio</div>
-    <div class="nav-item" data-page="rentals"     onclick="go('rentals')">🤝 Наеми</div>
-    <div class="nav-item" data-page="figureRentals" onclick="go('figureRentals')">🎭 Наем фигури</div>
-    <div class="nav-item" data-page="execution"  onclick="go('execution')">⚡ Изпълнение</div>
-    <div class="nav-item" data-page="portfolio"  onclick="go('portfolio')">📸 Портфолио</div>
-
-    <div class="nav-section">Производство</div>
-    <div class="nav-item" data-page="handmade"    onclick="go('handmade')">🌸 Handmade</div>
-    <div class="nav-item" data-page="creativeTime" onclick="go('creativeTime')">☀️ Creative Time</div>
-
-    <div class="nav-section">Екип</div>
-    <div class="nav-item" data-page="team" onclick="go('team')">👤 Екип</div>
-
-    <div class="nav-section">Клиентски</div>
-    <div class="nav-item" data-page="publicCatalog" onclick="go('publicCatalog')">🛍 Каталог</div>
-    <div class="nav-item" data-page="inquiryForm"   onclick="go('inquiryForm')">📋 Smart форма</div>
-
-    <div class="nav-section">Стратегия</div>
-    <div class="nav-item" data-page="seasonal"   onclick="go('seasonal')">📅 Сезонен план</div>
-    <div class="nav-item" data-page="hourlyRate" onclick="go('hourlyRate')">⏱ Часова ставка</div>
-    <div class="nav-item" data-page="viral"      onclick="go('viral')">🔗 Вирусен ефект</div>
-    <div class="nav-item" data-page="bulgarian"  onclick="go('bulgarian')">🇧🇬 Bulgarian Story</div>
-
-    <div id="theme-toggle">
-      <button class="btn btn-secondary btn-sm" style="width:100%" onclick="toggleTheme()">🌙 Тъмен режим</button>
-    </div>
-  </nav>
-
-  <!-- MAIN -->
-  <main id="main">
-    <div id="page-content"></div>
-  </main>
-
-</div>
-
-<!-- TOAST CONTAINER -->
-<div id="toast-container"></div>
-
-<script>
 'use strict';
 // ═══════════════════════════════════════════
 // КОНФИГУРАЦИЯ
@@ -2112,9 +2039,8 @@ window.render_movements = function(el){
     </div>
   </div>`;
 };
-</script>
 
-<script>
+
 'use strict';
 // ════════════════════════════════════════════
 // БЛОК 5 — ФИНАНСИ
@@ -2616,9 +2542,8 @@ window.render_reports = function(el) {
     </div>
   </div>`;
 };
-</script>
 
-<script>
+
 'use strict';
 // ════════════════════════════════════════════
 // БЛОК 6 — НАЕМИ
@@ -3148,9 +3073,8 @@ async function delTeamMember(id) {
   toast('Изтрито', 'ok');
   go(curPage);
 }
-</script>
 
-<script>
+
 'use strict';
 // ════════════════════════════════════════════
 // БЛОК 7 — EVENT ИЗПЪЛНЕНИЕ
@@ -3648,29 +3572,12 @@ document.addEventListener('visibilitychange', function() {
 });
 
 console.log('✅ Eleya Decor Studio — всички 16 модула заредени!');
-</script>
-<script>
+
+
 window.render_import = function(el) {
   el.innerHTML = `
-</script>
-  <div class="topbar">
-    <h2>📥 Импорт на поръчки</h2>
-  </div>
-  <div class="content">
 
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px">
 
-      <!-- TEMU PDF импорт -->
-      <div style="background:var(--card);border:1.5px solid var(--border);border-radius:var(--r);padding:20px">
-        <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
-          <div style="width:40px;height:40px;background:var(--rose-l);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:20px">📦</div>
-          <div>
-            <div style="font-size:15px;font-weight:700">Temu PDF</div>
-            <div style="font-size:11px;color:var(--ink-m)">Качи фактура от Temu</div>
-          </div>
-        </div>
-        <p style="font-size:12px;color:var(--ink-m);margin-bottom:14px;line-height:1.6">
-<script>
           Качи PDF на поръчка от Temu → системата автоматично разпознава артикулите, цените и количествата → преглеждаш → добавяш в инвентара с един клик.
         </p>
         <div id="temu-drop"
@@ -3679,98 +3586,20 @@ window.render_import = function(el) {
           ondrop="handleTemuDrop(event)"
           style="border:2px dashed var(--border);border-radius:var(--r-sm);padding:28px;text-align:center;cursor:pointer;transition:.2s;margin-bottom:12px"
           onclick="document.getElementById('temu-file').click()">
-</script>
-          <div style="font-size:32px;margin-bottom:8px">📄</div>
-          <div style="font-size:13px;font-weight:600;color:var(--ink-m)">Плъзни PDF тук</div>
-          <div style="font-size:11px;color:var(--ink-l);margin-top:4px">или кликни за избор на файл</div>
-          <input type="file" id="temu-file" accept=".pdf" style="display:none" onchange="handleTemuFile(this)">
-        </div>
-        <div id="temu-status" style="display:none" class="alert blue">
-          <span id="temu-status-text">Анализирам...</span>
-        </div>
-      </div>
 
-      <!-- Ръчен / CSV импорт -->
-      <div style="background:var(--card);border:1.5px solid var(--border);border-radius:var(--r);padding:20px">
-        <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
-          <div style="width:40px;height:40px;background:var(--green-l);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:20px">📊</div>
-          <div>
-            <div style="font-size:15px;font-weight:700">Ръчен импорт</div>
-            <div style="font-size:11px;color:var(--ink-m)">CSV или ръчно въвеждане</div>
-          </div>
-        </div>
-        <p style="font-size:12px;color:var(--ink-m);margin-bottom:14px;line-height:1.6">
-<script>
+
           Въведи артикули ръчно или качи CSV файл. Идеално за Gemar инвентара от тетрадката.
-</script>
-        </p>
-        <div class="fg">
-          <label>Бърз текстов импорт</label>
-          <textarea id="manual-import-text" rows="5"
-<script>
+
+
             placeholder="Въведи по един ред:&#10;Розови балони G90, 100 бр, 0.10€&#10;Сребърна лента, 5 бр, 1.20€&#10;..."></textarea>
-</script>
-        </div>
-        <div style="display:flex;gap:8px">
-          <button class="btn btn-secondary btn-sm" onclick="document.getElementById('csv-file').click()">
-<script>
+
+
             📊 Качи CSV
-</script>
-          </button>
-          <input type="file" id="csv-file" accept=".csv" style="display:none" onchange="handleCSVFile(this)">
-          <button class="btn btn-primary btn-sm" onclick="parseManualImport()">
-<script>
+
+
             ▶ Анализирай
-</script>
-          </button>
-        </div>
-      </div>
-    </div>
 
-    <!-- Резултати от импорт -->
-    <div id="import-results" style="display:none">
-      <div class="table-wrap">
-        <div class="table-hdr">
-          <h3 id="import-results-title">Разпознати артикули</h3>
-          <div style="display:flex;gap:8px">
-            <button class="btn btn-secondary btn-sm" onclick="clearImport()">✕ Изчисти</button>
-            <button class="btn btn-primary" onclick="confirmImport()">✅ Добави всички в инвентара</button>
-          </div>
-        </div>
-        <div id="import-table-wrap" style="overflow-x:auto">
-          <table>
-            <thead><tr>
-              <th style="width:32px"><input type="checkbox" id="import-check-all" onchange="toggleAllImport(this)" style="accent-color:var(--rose)"></th>
-              <th>Наименование</th>
-              <th>Категория</th>
-              <th>Количество</th>
-              <th>Ед.</th>
-              <th>Цена €</th>
-              <th>Доставчик</th>
-              <th>Снимка</th>
-              <th>Действие</th>
-            </tr></thead>
-            <tbody id="import-tbody"></tbody>
-          </table>
-        </div>
-        <div id="import-summary" style="padding:12px 16px;background:var(--bg);border-top:1.5px solid var(--border);font-size:12px;color:var(--ink-m)"></div>
-      </div>
-    </div>
 
-    <!-- История на импортите -->
-    <div class="table-wrap" style="margin-top:14px">
-      <div class="table-hdr"><h3>📋 История на импортите</h3></div>
-      <div id="import-history-body" style="padding:14px">
-        <div class="empty-state" style="padding:30px">
-          <div class="ico" style="font-size:36px">📥</div>
-          <p>Няма импорти все още</p>
-          <small>Качи първата поръчка от Temu</small>
-        </div>
-      </div>
-    </div>
-
-  </div>`;
-<script>
 };
 
 // ── Обработка на Temu PDF ─────────────────────────────────────
@@ -4127,9 +3956,8 @@ function renderImportHistory() {
     '</div>';
   }).join('');
 }
-</script>
 
-<script>
+
 'use strict';
 // ════════════════════════════════════════════
 // THEME STUDIO — Дедикирана среда за теми
@@ -5150,9 +4978,8 @@ function updateImgPreview(inputId, previewId) {
     prev.innerHTML = '';
   }
 }
-</script>
 
-<script>
+
 'use strict';
 // ════════════════════════════════════════════
 // ПУБЛИЧЕН КАТАЛОГ + SMART ФОРМА
@@ -5538,7 +5365,7 @@ function previewPublicPage() {
     </div>
   </div>
 
-  <script>
+  \x3cscript\x3e
     function filterCatalog(occasion) {
       document.querySelectorAll('.filter-btn').forEach(function(b){ b.classList.remove('on'); });
       event.target.classList.add('on');
@@ -5591,7 +5418,7 @@ function previewPublicPage() {
       document.getElementById('inquiry-modal').style.display='none';
     }
     function showDetail(card) { card.querySelector('.btn-detail').style.display='none'; }
-  <\/script>
+  \x3c/script\x3e
   </body></html>`);
   win.document.close();
 }
@@ -5728,9 +5555,8 @@ function convertInquiryToClient(encoded) {
     toast('Попълни данните и запази клиента', 'ok');
   } catch(e) {}
 }
-</script>
 
-<script>
+
 'use strict';
 // ════════════════════════════════════════════
 // БАКШИШИ — проследяване и анализ
@@ -6659,9 +6485,8 @@ if (typeof quoteCard === 'function') {
 // ALTER TABLE clients ADD COLUMN IF NOT EXISTS referred_by uuid REFERENCES clients(id);
 
 console.log('✅ Сезонен планировчик + Hourly Rate + Вирусен ефект + Bulgarian Story заредени!');
-</script>
 
-<script>
+
 'use strict';
 // ════════════════════════════════════════════
 // ПОПРАВКИ — Дати BG · 24ч · Dashboard · 
@@ -6956,9 +6781,8 @@ window.render_calendar = function(el) {
 var _origRenderDash = window.render_dashboard;
 
 console.log('✅ Поправки v2 заредени: BG дати · 24ч · Dashboard · Препоръчан от · Temu PDF');
-</script>
 
-<script>
+
 'use strict';
 // ════════════════════════════════════════════
 // ФИНАЛНИ ПОПРАВКИ v3
@@ -7187,9 +7011,8 @@ if (typeof render_quotes === 'function') {
 }
 
 console.log('✅ Финални поправки v3: Клиенти · Dashboard · Gemar Excel · Дати BG · Препоръчан от');
-</script>
 
-<script>
+
 'use strict';
 // ════════════════════════════════════════════
 // БЪРЗА ФОРМА ЗА ДОБАВЯНЕ НА АРТИКУЛ
@@ -7553,9 +7376,8 @@ async function saveQuickAdd(navigateAfter) {
 }
 
 console.log('✅ Бърза форма за артикул заредена!');
-</script>
 
-<script>
+
 'use strict';
 // ════════════════════════════════════════════
 // ТИПОВЕ АРТИКУЛИ — ИНВЕНТАР + ФИНАНСИ
@@ -7737,9 +7559,8 @@ window.selectQAType = function(val) {
 };
 
 console.log('✅ Типове артикули + Инвентар стойност + Автоматични движения заредени!');
-</script>
 
-<script>
+
 'use strict';
 // ════════════════════════════════════════════
 // ПОПРАВКА — dbLoad limit за продукти
@@ -7773,7 +7594,10 @@ window.dbLoad = async function(key, table, order, select, opts) {
 };
 
 // Презареждаме продуктите веднага с новия лимит
+// reloadProducts се изпълнява след init()
+// (преместено в init функцията)
 (async function reloadProducts() {
+  if (!db) return; // изчакваме db да се инициализира
   try {
     var result = await db.from('products')
       .select('*,categories(name,color),suppliers(name)')
@@ -7790,7 +7614,7 @@ window.dbLoad = async function(key, table, order, select, opts) {
 // ═══════════════════════════════════════════
 
 console.log('✅ Eleya Decor Studio v2 — чиста версия заредена!');
-</script>
+
 </script>
 </body>
 </html>
