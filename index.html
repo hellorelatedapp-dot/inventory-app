@@ -316,6 +316,70 @@ tr:hover td { background:var(--rose-ll); }
 
 
 </style>
+</head>
+<body>
+<div id="app">
+
+  <!-- SIDENAV -->
+  <nav id="sidenav">
+    <div class="nav-brand">
+      <div class="nav-brand-logo">🌸</div>
+      <div>
+        <div class="nav-brand-text">Eleya Decor</div>
+        <div class="nav-brand-sub">Studio</div>
+      </div>
+    </div>
+    <div class="nav-section">Основно</div>
+    <div class="nav-item" data-page="dashboard"     onclick="go('dashboard')">📊 Табло</div>
+    <div class="nav-item" data-page="myDay"         onclick="go('myDay')">🌸 Моят ден</div>
+    <div class="nav-item" data-page="calendar"      onclick="go('calendar')">📅 Календар</div>
+    <div class="nav-item" data-page="notifications" onclick="go('notifications')">🔔 Известия <span class="nav-badge" id="nb-notif" style="display:none">0</span></div>
+    <div class="nav-section">Бизнес</div>
+    <div class="nav-item" data-page="clients"  onclick="go('clients')">👥 Клиенти</div>
+    <div class="nav-item" data-page="quotes"   onclick="go('quotes')">📋 Оферти <span class="nav-badge" id="nb-quotes" style="display:none">0</span></div>
+    <div class="nav-item" data-page="finances" onclick="go('finances')">💰 Финанси</div>
+    <div class="nav-item" data-page="reports"  onclick="go('reports')">📈 Отчети</div>
+    <div class="nav-section">Инвентар</div>
+    <div class="nav-item" data-page="inventory"  onclick="go('inventory')">📦 Инвентар</div>
+    <div class="nav-item" data-page="quickAdd"   onclick="go('quickAdd')">➕ Добави артикул</div>
+    <div class="nav-item" data-page="movements"  onclick="go('movements')">↕ Движения</div>
+    <div class="nav-item" data-page="import"     onclick="go('import')">📥 Импорт</div>
+    <div class="nav-item" data-page="suppliers"  onclick="go('suppliers')">🏭 Доставчици</div>
+    <div class="nav-section">Декорации</div>
+    <div class="nav-item" data-page="themes"        onclick="go('themes')">🎨 Теми</div>
+    <div class="nav-item" data-page="themeStudio"   onclick="go('themeStudio')">✨ Theme Studio</div>
+    <div class="nav-item" data-page="rentals"       onclick="go('rentals')">🤝 Наеми</div>
+    <div class="nav-item" data-page="figureRentals" onclick="go('figureRentals')">🎭 Наем фигури</div>
+    <div class="nav-item" data-page="execution"     onclick="go('execution')">⚡ Изпълнение</div>
+    <div class="nav-item" data-page="portfolio"     onclick="go('portfolio')">📸 Портфолио</div>
+    <div class="nav-section">Производство</div>
+    <div class="nav-item" data-page="handmade"     onclick="go('handmade')">🌸 Handmade</div>
+    <div class="nav-item" data-page="creativeTime" onclick="go('creativeTime')">☀️ Creative Time</div>
+    <div class="nav-section">Екип</div>
+    <div class="nav-item" data-page="team" onclick="go('team')">👤 Екип</div>
+    <div class="nav-section">Клиентски</div>
+    <div class="nav-item" data-page="publicCatalog" onclick="go('publicCatalog')">🛍 Каталог</div>
+    <div class="nav-item" data-page="inquiryForm"   onclick="go('inquiryForm')">📋 Smart форма</div>
+    <div class="nav-section">Стратегия</div>
+    <div class="nav-item" data-page="seasonal"   onclick="go('seasonal')">📅 Сезонен план</div>
+    <div class="nav-item" data-page="hourlyRate" onclick="go('hourlyRate')">⏱ Часова ставка</div>
+    <div class="nav-item" data-page="viral"      onclick="go('viral')">🔗 Вирусен ефект</div>
+    <div class="nav-item" data-page="bulgarian"  onclick="go('bulgarian')">🇧🇬 Bulgarian Story</div>
+    <div id="theme-toggle">
+      <button class="btn btn-secondary btn-sm" style="width:100%" onclick="toggleTheme()">🌙 Тъмен режим</button>
+    </div>
+  </nav>
+
+  <!-- MAIN -->
+  <main id="main">
+    <div id="page-content"></div>
+  </main>
+
+</div>
+
+<!-- TOAST -->
+<div id="toast-container"></div>
+
 <script>'use strict';
 // ═══════════════════════════════════════════
 // КОНФИГУРАЦИЯ
