@@ -12,6 +12,7 @@
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌸</text></svg>">
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <style>
+<script>
 /* ═══════════════════════════════════════════
    CSS VARIABLES & RESET
 ═══════════════════════════════════════════ */
@@ -311,6 +312,7 @@ tr:hover td { background:var(--rose-ll); }
 
 /* DARK MODE TOGGLE */
 #theme-toggle { margin-top:auto; padding:12px 18px; border-top:1.5px solid var(--border); }
+</script>
 </style>
 </head>
 <body>
@@ -3647,8 +3649,10 @@ document.addEventListener('visibilitychange', function() {
 
 console.log('✅ Eleya Decor Studio — всички 16 модула заредени!');
 </script>
+<script>
 window.render_import = function(el) {
   el.innerHTML = `
+</script>
   <div class="topbar">
     <h2>📥 Импорт на поръчки</h2>
   </div>
@@ -3666,6 +3670,7 @@ window.render_import = function(el) {
           </div>
         </div>
         <p style="font-size:12px;color:var(--ink-m);margin-bottom:14px;line-height:1.6">
+<script>
           Качи PDF на поръчка от Temu → системата автоматично разпознава артикулите, цените и количествата → преглеждаш → добавяш в инвентара с един клик.
         </p>
         <div id="temu-drop"
@@ -3674,6 +3679,7 @@ window.render_import = function(el) {
           ondrop="handleTemuDrop(event)"
           style="border:2px dashed var(--border);border-radius:var(--r-sm);padding:28px;text-align:center;cursor:pointer;transition:.2s;margin-bottom:12px"
           onclick="document.getElementById('temu-file').click()">
+</script>
           <div style="font-size:32px;margin-bottom:8px">📄</div>
           <div style="font-size:13px;font-weight:600;color:var(--ink-m)">Плъзни PDF тук</div>
           <div style="font-size:11px;color:var(--ink-l);margin-top:4px">или кликни за избор на файл</div>
@@ -3694,20 +3700,28 @@ window.render_import = function(el) {
           </div>
         </div>
         <p style="font-size:12px;color:var(--ink-m);margin-bottom:14px;line-height:1.6">
+<script>
           Въведи артикули ръчно или качи CSV файл. Идеално за Gemar инвентара от тетрадката.
+</script>
         </p>
         <div class="fg">
           <label>Бърз текстов импорт</label>
           <textarea id="manual-import-text" rows="5"
+<script>
             placeholder="Въведи по един ред:&#10;Розови балони G90, 100 бр, 0.10€&#10;Сребърна лента, 5 бр, 1.20€&#10;..."></textarea>
+</script>
         </div>
         <div style="display:flex;gap:8px">
           <button class="btn btn-secondary btn-sm" onclick="document.getElementById('csv-file').click()">
+<script>
             📊 Качи CSV
+</script>
           </button>
           <input type="file" id="csv-file" accept=".csv" style="display:none" onchange="handleCSVFile(this)">
           <button class="btn btn-primary btn-sm" onclick="parseManualImport()">
+<script>
             ▶ Анализирай
+</script>
           </button>
         </div>
       </div>
@@ -3756,6 +3770,7 @@ window.render_import = function(el) {
     </div>
 
   </div>`;
+<script>
 };
 
 // ── Обработка на Temu PDF ─────────────────────────────────────
@@ -7767,11 +7782,15 @@ window.dbLoad = async function(key, table, order, select, opts) {
     S.products = result.data || [];
     console.log('✅ Продукти презаредени:', S.products.length, 'артикула');
     updateBadges();
+  } catch(e) { console.error('Reload products:', e); }
+})();
+
 // ═══════════════════════════════════════════
 // GEMAR ДИРЕКТЕН ИМПОРТ
 // ═══════════════════════════════════════════
 
 console.log('✅ Eleya Decor Studio v2 — чиста версия заредена!');
+</script>
 </script>
 </body>
 </html>
