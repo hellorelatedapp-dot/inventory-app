@@ -6000,3 +6000,655 @@ console.log('✅ Eleya Decor Studio v2 — чиста версия зареде�
 </script>
 </body>
 </html>
+<script>
+'use strict';
+// ═══════════════════════════════════════════
+// ЛИПСВАЩИ МОДУЛИ — чисто написани
+// ═══════════════════════════════════════════
+
+// ── МОЯ ДЕН ────────────────────────────────
+window.render_myDay = function(el) {
+  const td = today();
+  const todayQuotes = S.quotes.filter(q => q.event_date === td);
+  const todayTasks  = S.tasks.filter(t => !t.completed && t.due_date <= td);
+  const upcoming7   = S.quotes.filter(q =>
+    q.event_date > td && q.event_date <= addDays(td,7) &&
+    ['accepted','deposit_paid'].includes(q.status)
+  ).sort((a,b) => a.event_date.localeCompare(b.event_date));
+
+  const h = new Date().getHours();
+  const greeting = h<12 ? '🌸 Добро утро, Надя!' : h<17 ? '🌺 Добър ден, Надя!' : '✨ Добър вечер, Надя!';
+
+  el.innerHTML = `
+  <div class="topbar"><h2>🌸 Моят ден</h2>
+    <button class="btn btn-primary" onclick="openTaskModal()">+ Задача</button>
+  </div>
+  <div class="content">
+    <div class="greet-banner" style="margin-bottom:16px">
+      <div style="font-family:'Playfair Display',serif;font-size:22px;font-weight:700">${greeting}</div>
+      <div style="opacity:.8;margin-top:4px">${new Date().toLocaleDateString('bg',{weekday:'long',day:'numeric',month:'long'})}</div>
+    </div>
+
+    <div class="stat-grid" style="margin-bottom:16px">
+      <div class="stat-card ${todayQuotes.length>0?'accent':''}">
+        <div class="lbl">🎉 Днешни събития</div>
+        <div class="val">${todayQuotes.length}</div>
+        <div class="sub">${todayQuotes.map(q=>q.clients?.name||'').join(', ')||'Нищо днес'}</div>
+      </div>
+      <div class="stat-card ${todayTasks.length>0?'warn':'good'}">
+        <div class="lbl">✅ Задачи за днес</div>
+        <div class="val">${todayTasks.length}</div>
+        <div class="sub">${todayTasks.length>0?'Трябва внимание':'Всичко е наред'}</div>
+      </div>
+      <div class="stat-card">
+        <div class="lbl">📅 Предстоящи 7 дни</div>
+        <div class="val">${upcoming7.length}</div>
+        <div class="sub">потвърдени</div>
+      </div>
+      <div class="stat-card">
+        <div class="lbl">👥 Клиенти</div>
+        <div class="val">${S.clients.length}</div>
+        <div class="sub">${S.clients.filter(c=>c.is_vip).length} VIP</div>
+      </div>
+    </div>
+
+    ${todayTasks.length > 0 ? `
+    <div class="table-wrap" style="margin-bottom:14px">
+      <div class="table-hdr"><h3>✅ Задачи за днес</h3></div>
+      <div style="padding:10px 14px">
+        ${todayTasks.map(t => `
+        <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)">
+          <input type="checkbox" onchange="completeTask('${t.id}')" style="width:18px;height:18px;accent-color:var(--rose);cursor:pointer">
+          <span style="flex:1;font-size:13px">${escHtml(t.description)}</span>
+          <span class="badge ${t.priority==='high'?'br':t.priority==='medium'?'bw':'bd'}">${t.priority||'medium'}</span>
+        </div>`).join('')}
+      </div>
+    </div>` : ''}
+
+    ${upcoming7.length > 0 ? `
+    <div class="table-wrap">
+      <div class="table-hdr"><h3>📅 Предстоящи 7 дни</h3></div>
+      <table><thead><tr><th>Дата</th><th>Клиент</th><th>Тип</th><th>Сума</th></tr></thead><tbody>
+      ${upcoming7.map(q => {
+        const dl = daysFrom(q.event_date);
+        return `<tr>
+          <td><strong style="color:${dl<=2?'var(--red)':'inherit'}">${fmtDate(q.event_date)}</strong>
+          <span class="badge ${dl<=1?'br':'bw'}" style="margin-left:6px">${dl===0?'ДНЕС':dl+'д'}</span></td>
+          <td>${q.clients?.name||'—'}</td>
+          <td>${q.event_type||'—'}</td>
+          <td style="font-weight:700">${eur0(q.total_price)}</td>
+        </tr>`;
+      }).join('')}
+      </tbody></table>
+    </div>` : ''}
+  </div>`;
+};
+
+async function completeTask(id) {
+  await db.from('tasks').update({ completed:true }).eq('id', id);
+  await dbLoad('tasks','tasks','due_date','*',{asc:true,limit:200});
+  toast('✅ Задачата е изпълнена!', 'ok');
+  go(curPage);
+}
+
+function openTaskModal() {
+  let m = document.getElementById('mod-task');
+  if (!m) {
+    m = document.createElement('div');
+    m.id = 'mod-task'; m.className = 'overlay'; m.style.display='none';
+    m.innerHTML = `<div class="modal" style="width:440px">
+      <div class="modal-hdr"><h3>+ Нова задача</h3><button class="close-btn" onclick="cm('mod-task')">×</button></div>
+      <div class="fg"><label>Описание *</label><input id="mt-desc" placeholder="Напомни на клиента за депозит..."></div>
+      <div class="fr">
+        <div class="fg"><label>Краен срок</label><input type="date" id="mt-due" value="${today()}"></div>
+        <div class="fg"><label>Приоритет</label>
+          <select id="mt-prio">
+            <option value="high">🔴 Висок</option>
+            <option value="medium" selected>🟡 Среден</option>
+            <option value="low">🟢 Нисък</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-actions">
+        <button class="btn btn-secondary" onclick="cm('mod-task')">Отказ</button>
+        <button class="btn btn-primary" onclick="saveTask()">Запази</button>
+      </div>
+    </div>`;
+    m.addEventListener('click', e => { if(e.target===m) cm('mod-task'); });
+    document.body.appendChild(m);
+  }
+  om('mod-task');
+}
+
+async function saveTask() {
+  const desc = document.getElementById('mt-desc')?.value.trim();
+  if (!desc) { toast('Въведи описание', 'err'); return; }
+  await db.from('tasks').insert({
+    description: desc,
+    due_date: document.getElementById('mt-due')?.value || today(),
+    priority: document.getElementById('mt-prio')?.value || 'medium',
+    completed: false, type: 'manual',
+  });
+  await dbLoad('tasks','tasks','due_date','*',{asc:true,limit:200});
+  cm('mod-task');
+  toast('✅ Задачата е добавена!', 'ok');
+  go(curPage);
+}
+
+// ── ИЗВЕСТИЯ ───────────────────────────────
+window.render_notifications = function(el) {
+  const unread = S.notifications.filter(n => !n.is_read);
+  const read   = S.notifications.filter(n => n.is_read).slice(0,20);
+
+  el.innerHTML = `
+  <div class="topbar">
+    <h2>🔔 Известия <span style="font-size:13px;color:var(--ink-m);font-weight:400">${unread.length} непрочетени</span></h2>
+    ${unread.length > 0 ? `<button class="btn btn-secondary btn-sm" onclick="markAllRead()">✓ Прочети всички</button>` : ''}
+  </div>
+  <div class="content">
+    ${S.notifications.length === 0
+      ? '<div class="empty-state"><div class="ico">🔔</div><p>Няма известия</p></div>'
+      : [...unread, ...read].map(n => `
+        <div style="display:flex;gap:12px;padding:12px 14px;border-bottom:1px solid var(--border);background:${n.is_read?'transparent':'var(--rose-ll)'};cursor:pointer"
+          onclick="markRead('${n.id}','${n.link_to||'dashboard'}')">
+          <div style="font-size:22px;flex-shrink:0">
+            ${n.type==='baksish'?'🎁':n.type==='soft_hold_expired'?'⏰':n.type==='quote_exp'?'📤':'🔔'}
+          </div>
+          <div style="flex:1">
+            <div style="font-size:13px;font-weight:${n.is_read?'400':'700'}">${escHtml(n.title||'')}</div>
+            <div style="font-size:11px;color:var(--ink-m);margin-top:2px">${escHtml(n.message||'')}</div>
+            <div style="font-size:10px;color:var(--ink-l);margin-top:3px">${fmtDate(n.created_at?.slice(0,10))}</div>
+          </div>
+          ${!n.is_read ? '<div style="width:8px;height:8px;border-radius:50%;background:var(--rose);flex-shrink:0;margin-top:4px"></div>' : ''}
+        </div>`).join('')}
+  </div>`;
+};
+
+async function markRead(id, page) {
+  await db.from('notifications').update({ is_read:true }).eq('id', id);
+  await loadNotifications();
+  go(page || 'dashboard');
+}
+
+async function markAllRead() {
+  await db.from('notifications').update({ is_read:true }).eq('is_read', false);
+  await loadNotifications();
+  toast('✅ Всички прочетени', 'ok');
+  go('notifications');
+}
+
+// ── КАЛЕНДАР ───────────────────────────────
+let calYear = new Date().getFullYear();
+let calMonth = new Date().getMonth();
+
+window.render_calendar = function(el) {
+  const td = today();
+  const firstDay = new Date(calYear, calMonth, 1);
+  const daysInMonth = new Date(calYear, calMonth+1, 0).getDate();
+  const startDow = (firstDay.getDay()+6)%7; // Пон=0
+
+  const monthQuotes = S.quotes.filter(q =>
+    q.event_date?.startsWith(`${calYear}-${String(calMonth+1).padStart(2,'0')}`)
+  );
+
+  el.innerHTML = `
+  <div class="topbar">
+    <h2>📅 Календар</h2>
+    <button class="btn btn-secondary btn-sm" onclick="calMonth--;if(calMonth<0){calMonth=11;calYear--;}render_calendar(document.getElementById('page-content'))">‹</button>
+    <span style="font-size:14px;font-weight:700;min-width:140px;text-align:center">${MONTHS_BG[calMonth]} ${calYear}</span>
+    <button class="btn btn-secondary btn-sm" onclick="calMonth++;if(calMonth>11){calMonth=0;calYear++;}render_calendar(document.getElementById('page-content'))">›</button>
+    <button class="btn btn-secondary btn-sm" onclick="calMonth=new Date().getMonth();calYear=new Date().getFullYear();render_calendar(document.getElementById('page-content'))">Днес</button>
+    <button class="btn btn-primary" onclick="openQuoteModal()">+ Събитие</button>
+  </div>
+  <div class="content">
+    <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px;margin-bottom:4px">
+      ${['Пон','Вто','Сря','Чет','Пет','Съб','Нед'].map(d =>
+        `<div style="text-align:center;font-size:10px;font-weight:700;color:var(--ink-l);padding:4px">${d}</div>`
+      ).join('')}
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px">
+      ${Array(startDow).fill('<div style="min-height:80px"></div>').join('')}
+      ${Array.from({length:daysInMonth},(_,i) => {
+        const day  = i+1;
+        const ds   = `${calYear}-${String(calMonth+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
+        const isToday = ds === td;
+        const dayQ = monthQuotes.filter(q => q.event_date===ds);
+        return `<div class="cal-day${isToday?' today':''}" onclick="openQuoteModal()">
+          <div class="cal-day-num" style="color:${isToday?'var(--rose-d)':'inherit'}">${day}</div>
+          ${dayQ.map(q => `<div class="cal-event" title="${q.clients?.name||''}">${q.clients?.name?.split(' ')[0]||q.event_type||'?'}</div>`).join('')}
+        </div>`;
+      }).join('')}
+    </div>
+
+    <div class="sdiv" style="margin-top:16px">📋 Събития в ${MONTHS_BG[calMonth]}</div>
+    ${monthQuotes.length === 0
+      ? '<div class="empty-state" style="padding:20px"><p>Няма събития</p></div>'
+      : `<table><thead><tr><th>Дата</th><th>Клиент</th><th>Тип</th><th>Час</th><th>Адрес</th><th>Сума</th><th>Статус</th></tr></thead><tbody>
+      ${monthQuotes.sort((a,b)=>a.event_date.localeCompare(b.event_date)).map(q => {
+        const st = QSTATUS[q.status]||QSTATUS.draft;
+        return `<tr onclick="openQuoteModal('${q.id}')" style="cursor:pointer">
+          <td><strong>${fmtDate(q.event_date)}</strong></td>
+          <td>${q.clients?.name||'—'}</td>
+          <td>${q.event_type||'—'}</td>
+          <td>${fmtTime(q.event_time)||'—'}</td>
+          <td style="font-size:11px">${q.address||'—'}</td>
+          <td style="font-weight:700">${eur0(q.total_price)}</td>
+          <td><span class="badge ${st.cls}">${st.l}</span></td>
+        </tr>`;
+      }).join('')}
+      </tbody></table>`}
+  </div>`;
+};
+
+// ── НАЕМ НА ФИГУРИ ─────────────────────────
+window.render_figureRentals = function(el) {
+  const rentable = S.products.filter(p => p.is_rentable || p.rental_price > 0 || p.product_type==='rental' || p.product_type==='asset_rental');
+
+  el.innerHTML = `
+  <div class="topbar">
+    <h2>🎭 Наем на фигури</h2>
+    <button class="btn btn-secondary btn-sm" onclick="go('inventory')">← Инвентар</button>
+  </div>
+  <div class="content">
+    ${rentable.length === 0
+      ? `<div class="alert blue">💡 Нямаш маркирани фигури за наем. Отиди в <strong>Инвентар</strong> → редактирай продукт → тип "За наем".</div>`
+      : `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px">
+          ${rentable.map(p => `
+          <div class="table-wrap" style="padding:12px">
+            <div style="font-size:14px;font-weight:700;margin-bottom:6px">${escHtml(p.name)}</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
+              <div style="background:var(--bg);border-radius:6px;padding:8px;text-align:center">
+                <div style="font-size:16px;font-weight:900;color:var(--rose-d)">${p.rental_price>0?eur(p.rental_price):'—'}</div>
+                <div style="font-size:9px;color:var(--ink-l);text-transform:uppercase">Наем</div>
+              </div>
+              <div style="background:var(--bg);border-radius:6px;padding:8px;text-align:center">
+                <div style="font-size:16px;font-weight:900">${p.quantity||0}</div>
+                <div style="font-size:9px;color:var(--ink-l);text-transform:uppercase">${p.unit||'бр'}</div>
+              </div>
+            </div>
+            <span class="badge ${p.quantity>0?'bg':'br'}">${p.quantity>0?'✅ Свободна':'❌ Недостъпна'}</span>
+          </div>`).join('')}
+        </div>`}
+  </div>`;
+};
+
+// ── HANDMADE STUDIO ─────────────────────────
+const HM_TYPES = {
+  candle:  { l:'🕯️ Свещи',          color:'var(--amber)' },
+  soap:    { l:'🧼 Биосапуни',       color:'var(--green)' },
+  bouquet: { l:'💐 Букети сапунени', color:'var(--rose-d)' },
+  clay:    { l:'🏺 Полимерна глина', color:'var(--purple)' },
+  sign:    { l:'✍️ Надписи 3D',      color:'var(--blue)' },
+  figure:  { l:'🎭 Фигури',          color:'var(--ink-m)' },
+  gift:    { l:'🎁 Подаръчета',      color:'var(--rose-d)' },
+  other:   { l:'📦 Друго',           color:'var(--ink-l)' },
+};
+
+window.render_handmade = function(el) {
+  const prods = S.products.filter(p => p.product_type==='handmade');
+  const counts = {};
+  Object.keys(HM_TYPES).forEach(k => counts[k] = prods.filter(p=>p.handmade_type===k).length);
+
+  el.innerHTML = `
+  <div class="topbar">
+    <h2>🌸 Handmade Studio <span style="font-size:13px;color:var(--ink-m);font-weight:400">${prods.length} продукта</span></h2>
+    <button class="btn btn-primary" onclick="go('quickAdd')">+ Нов продукт</button>
+  </div>
+  <div class="content">
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px">
+      ${Object.entries(HM_TYPES).map(([k,t]) => `
+      <div class="stat-card" style="padding:10px 12px">
+        <div class="lbl">${t.l}</div>
+        <div class="val" style="font-size:20px;color:${t.color}">${counts[k]||0}</div>
+      </div>`).join('')}
+    </div>
+    ${prods.length === 0
+      ? '<div class="empty-state"><div class="ico">🌸</div><p>Няма handmade продукти</p><small>Добави от "Добави артикул" → тип Handmade</small></div>'
+      : `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px">
+          ${prods.map(p => {
+            const ht = HM_TYPES[p.handmade_type||'other'];
+            const margin = p.price>0&&p.cost_price>0 ? Math.round((1-p.cost_price/p.price)*100) : 0;
+            return `<div class="table-wrap" style="padding:12px">
+              <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:8px">
+                <div>
+                  <div style="font-size:13px;font-weight:700">${escHtml(p.name)}</div>
+                  <div style="font-size:10px;color:${ht.color};margin-top:2px">${ht.l}</div>
+                </div>
+                <div style="font-size:20px;font-weight:900;color:${p.quantity===0?'var(--red)':'inherit'}">${p.quantity||0}</div>
+              </div>
+              <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:5px;margin-bottom:8px;text-align:center">
+                <div style="background:var(--bg);border-radius:6px;padding:5px">
+                  <div style="font-size:11px;font-weight:700;color:var(--red)">${eur(p.cost_price||0)}</div>
+                  <div style="font-size:8px;color:var(--ink-l)">СЕБЕСТ.</div>
+                </div>
+                <div style="background:var(--bg);border-radius:6px;padding:5px">
+                  <div style="font-size:11px;font-weight:700;color:var(--green)">${eur(p.price||0)}</div>
+                  <div style="font-size:8px;color:var(--ink-l)">ЦЕНА</div>
+                </div>
+                <div style="background:var(--bg);border-radius:6px;padding:5px">
+                  <div style="font-size:11px;font-weight:700;color:${margin>=50?'var(--green)':margin>=30?'var(--amber)':'var(--red)'}">${margin}%</div>
+                  <div style="font-size:8px;color:var(--ink-l)">МАРЖ</div>
+                </div>
+              </div>
+              <button class="btn btn-primary btn-sm" style="width:100%" onclick="quickMov('${p.id}')">+ Зареди</button>
+            </div>`;
+          }).join('')}
+        </div>`}
+  </div>`;
+};
+
+// ── CREATIVE TIME ───────────────────────────
+window.render_creativeTime = function(el) {
+  const td = today();
+  const hmProds = S.products.filter(p => p.product_type==='handmade');
+  const lowHm   = hmProds.filter(p => p.quantity <= (p.min_quantity||0));
+  const upcoming = S.quotes.filter(q =>
+    q.event_date >= td && q.event_date <= addDays(td,14) &&
+    ['accepted','deposit_paid'].includes(q.status)
+  );
+
+  el.innerHTML = `
+  <div class="topbar"><h2>☀️ Creative Time Планировчик</h2></div>
+  <div class="content">
+    <div style="background:linear-gradient(135deg,var(--rose),var(--rose-d));border-radius:16px;padding:20px;margin-bottom:16px;color:#fff">
+      <div style="font-family:'Playfair Display',serif;font-size:18px;font-weight:700;margin-bottom:8px">🌸 Колко свободно творческо време имаш?</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        ${[['1','1 час'],['2','2 часа'],['3','3 часа'],['4','4 часа'],['8','Целия ден']].map(([h,l]) =>
+          `<button onclick="showCreativePlan(${h})"
+            style="padding:8px 16px;border-radius:20px;border:2px solid rgba(255,255,255,.5);background:rgba(255,255,255,.15);color:#fff;font-size:13px;font-weight:700;cursor:pointer">${l}</button>`
+        ).join('')}
+      </div>
+    </div>
+    <div id="creative-plan"></div>
+    ${lowHm.length > 0 ? `
+    <div class="alert amber" style="margin-bottom:14px">
+      ⚠️ ${lowHm.length} handmade продукта са под минимума: ${lowHm.map(p=>`<strong>${p.name}</strong>`).join(', ')}
+    </div>` : ''}
+    ${upcoming.length > 0 ? `
+    <div class="table-wrap">
+      <div class="table-hdr"><h3>🔥 Предстоящи до 14 дни</h3></div>
+      <table><thead><tr><th>Клиент</th><th>Дата</th><th>Тип</th><th>Дни</th></tr></thead><tbody>
+      ${upcoming.map(q => `<tr>
+        <td><strong>${q.clients?.name||'—'}</strong></td>
+        <td>${fmtDate(q.event_date)}</td>
+        <td>${q.event_type||'—'}</td>
+        <td><span class="badge ${daysFrom(q.event_date)<=3?'br':'bw'}">${daysFrom(q.event_date)}д</span></td>
+      </tr>`).join('')}
+      </tbody></table>
+    </div>` : ''}
+  </div>`;
+};
+
+function showCreativePlan(hours) {
+  const el = document.getElementById('creative-plan');
+  if (!el) return;
+  const hmLow = S.products.filter(p => p.product_type==='handmade' && p.quantity<=(p.min_quantity||0));
+  const suggestions = [];
+  let rem = hours;
+
+  if (hmLow.length > 0 && rem > 0) {
+    suggestions.push({ ico:'📦', title:'Попълни handmade запасите', desc:`${hmLow.map(p=>p.name).slice(0,2).join(', ')} са под минимума`, time: Math.min(rem, 2) });
+    rem -= Math.min(rem, 2);
+  }
+  if (rem >= 1) {
+    suggestions.push({ ico:'🎨', title:'Canva визуализация', desc:'Създай нов дизайн за тема', time: rem });
+  }
+
+  el.innerHTML = `<div class="sdiv" style="margin-bottom:10px">💡 План за ${hours} ч.</div>` +
+    (suggestions.length > 0 ? suggestions.map((s,i) => `
+    <div style="background:var(--rose-ll);border-radius:var(--r);padding:14px;margin-bottom:10px;display:flex;align-items:center;gap:14px">
+      <div style="font-size:32px">${s.ico}</div>
+      <div style="flex:1">
+        <div style="font-size:14px;font-weight:700;color:var(--rose-d)">${i+1}. ${s.title}</div>
+        <div style="font-size:12px;color:var(--ink-m);margin-top:2px">${s.desc}</div>
+        <div style="font-size:11px;color:var(--ink-l);margin-top:2px">⏱ ~${s.time}ч</div>
+      </div>
+    </div>`).join('') : '<div class="empty-state"><p>Всичко е наред! Enjoy! 🌸</p></div>');
+}
+
+// ── СЕЗОНЕН ПЛАНИРОВЧИК ─────────────────────
+let seasonYear = new Date().getFullYear();
+
+window.render_seasonal = function(el) {
+  const MONTH_SEASONS = [
+    '❄️ Зима','❄️ Зима','🌸 Пролет','🌸 Пролет','🌸 Пролет',
+    '☀️ Лято','☀️ Лято','☀️ Лято','🍂 Есен','🍂 Есен','🍂 Есен','❄️ Зима'
+  ];
+  const SEASON_COLORS = { '❄️ Зима':'#7ab8d4','🌸 Пролет':'#e8a0b0','☀️ Лято':'#f5c842','🍂 Есен':'#d4833a' };
+  const tm = String(seasonYear);
+
+  const monthRev = Array(12).fill(0);
+  const monthEvs = Array(12).fill(0);
+  S.quotes.filter(q => q.event_date?.startsWith(tm) && ['accepted','deposit_paid','completed'].includes(q.status))
+    .forEach(q => { const m = +q.event_date.slice(5,7)-1; monthRev[m] += q.total_price||0; monthEvs[m]++; });
+
+  const maxRev = Math.max(...monthRev, 1);
+  const totalRev = monthRev.reduce((s,v)=>s+v,0);
+
+  el.innerHTML = `
+  <div class="topbar">
+    <h2>📅 Сезонен планировчик ${seasonYear}</h2>
+    <button class="btn btn-secondary btn-sm" onclick="seasonYear--;render_seasonal(document.getElementById('page-content'))">‹ ${seasonYear-1}</button>
+    <button class="btn btn-secondary btn-sm" onclick="seasonYear=new Date().getFullYear();render_seasonal(document.getElementById('page-content'))">Тази година</button>
+    <button class="btn btn-secondary btn-sm" onclick="seasonYear++;render_seasonal(document.getElementById('page-content'))">› ${seasonYear+1}</button>
+  </div>
+  <div class="content">
+    <div class="stat-grid" style="margin-bottom:16px">
+      <div class="stat-card accent"><div class="lbl">💰 Приход ${seasonYear}</div><div class="val">${eur0(totalRev)}</div></div>
+      <div class="stat-card good"><div class="lbl">🏆 Най-добър месец</div>
+        <div class="val" style="font-size:18px">${totalRev>0?MONTHS_BG[monthRev.indexOf(Math.max(...monthRev))].slice(0,3):'—'}</div>
+      </div>
+      <div class="stat-card"><div class="lbl">📊 Среден/месец</div><div class="val">${eur0(totalRev/12)}</div></div>
+      <div class="stat-card"><div class="lbl">🎯 Активни месеци</div><div class="val">${monthRev.filter(v=>v>0).length}</div><div class="sub">от 12</div></div>
+    </div>
+
+    <div class="table-wrap" style="margin-bottom:16px">
+      <div class="table-hdr"><h3>📊 Приходи по месец</h3></div>
+      <div style="padding:16px;overflow-x:auto">
+        <div style="display:grid;grid-template-columns:repeat(12,1fr);gap:8px;min-width:700px">
+          ${monthRev.map((rev,i) => {
+            const barH = rev>0 ? Math.max(8, Math.round(rev/maxRev*80)) : 4;
+            const sc = SEASON_COLORS[MONTH_SEASONS[i]]||'#c9748a';
+            const isCur = new Date().getFullYear()===seasonYear && new Date().getMonth()===i;
+            return `<div style="text-align:center">
+              <div style="font-size:9px;font-weight:700;color:var(--ink-l);margin-bottom:4px">${MONTHS_SHORT[i].toUpperCase()}</div>
+              <div style="height:88px;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;margin-bottom:4px">
+                <div style="font-size:9px;font-weight:700;color:${rev>0?'var(--rose-d)':'var(--ink-l)'};margin-bottom:2px">${rev>0?eur0(rev):''}</div>
+                <div style="width:100%;height:${barH}px;background:${rev>0?sc:'var(--border)'};border-radius:4px 4px 0 0;${isCur?'outline:2px solid var(--rose);outline-offset:1px':''}"></div>
+              </div>
+              <div style="font-size:9px;color:var(--ink-l)">${monthEvs[i]>0?monthEvs[i]+' еvent':''}</div>
+            </div>`;
+          }).join('')}
+        </div>
+      </div>
+    </div>
+  </div>`;
+};
+
+// ── HOURLY RATE ─────────────────────────────
+window.render_hourlyRate = function(el) {
+  const completed = S.quotes.filter(q => ['completed','accepted','deposit_paid'].includes(q.status));
+  const totalRev  = completed.reduce((s,q)=>s+(q.total_price||0),0);
+  const totalHrs  = completed.length * 4; // ~4ч средно
+  const avgRate   = totalHrs>0 ? totalRev/totalHrs : 0;
+
+  el.innerHTML = `
+  <div class="topbar"><h2>⏱ Реална часова ставка</h2></div>
+  <div class="content">
+    <div style="background:linear-gradient(135deg,var(--rose),var(--rose-d));border-radius:16px;padding:24px;margin-bottom:16px;color:#fff;text-align:center">
+      <div style="font-size:12px;opacity:.8;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Твоята реална часова ставка</div>
+      <div style="font-size:52px;font-weight:900;margin-bottom:4px">${avgRate>0?eur0(avgRate):'—'}</div>
+      <div style="font-size:13px;opacity:.8">на час · ${completed.length} завършени оферти</div>
+      ${avgRate>0&&avgRate<15?'<div style="margin-top:12px;background:rgba(255,255,255,.2);border-radius:8px;padding:8px 14px;font-size:12px">⚠️ Под препоръчания минимум от €15/ч</div>':''}
+    </div>
+
+    <div class="table-wrap">
+      <div class="table-hdr"><h3>✍️ 3D Signature надпис — реална себестойност</h3></div>
+      <div style="padding:16px">
+        <div class="fr">
+          <div>
+            <div class="fg"><label>Часове за изработка</label><input type="number" id="hr-h" value="5" min="0" step=".5" oninput="calcSign()"></div>
+            <div class="fg"><label>Твоята ставка (€/ч)</label><input type="number" id="hr-r" value="15" min="0" step=".5" oninput="calcSign()"></div>
+            <div class="fg"><label>Материали (€)</label><input type="number" id="hr-m" value="3" min="0" step=".5" oninput="calcSign()"></div>
+          </div>
+          <div id="hr-result" style="background:var(--rose-ll);border-radius:var(--r);padding:16px;display:flex;align-items:center;justify-content:center;flex-direction:column;text-align:center">
+            <div style="font-size:11px;color:var(--ink-m);margin-bottom:8px">Изчисли тук →</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>`;
+  setTimeout(calcSign, 100);
+};
+
+function calcSign() {
+  const h = +document.getElementById('hr-h')?.value||5;
+  const r = +document.getElementById('hr-r')?.value||15;
+  const m = +document.getElementById('hr-m')?.value||3;
+  const real = h*r + m;
+  const rec  = real * 1.8;
+  const el = document.getElementById('hr-result');
+  if (!el) return;
+  el.innerHTML = `
+    <div style="font-size:10px;color:var(--ink-m)">Реална себестойност</div>
+    <div style="font-size:32px;font-weight:900;color:var(--red);margin:4px 0">${eur(real)}</div>
+    <div style="font-size:13px;color:var(--amber);font-weight:700">Препоръчана цена: ${eur(rec)}</div>
+    ${real>15?`<div style="font-size:11px;color:var(--red);margin-top:8px">⚠️ Губиш ${eur(real-15)} при цена €15!</div>`:''}`;
+}
+
+// ── ВИРУСЕН ЕФЕКТ ───────────────────────────
+window.render_viral = function(el) {
+  const topReferrers = S.clients.filter(c=>(c.referral_count||0)>0)
+    .sort((a,b)=>(b.referral_count||0)-(a.referral_count||0));
+  const totalRef = S.clients.reduce((s,c)=>s+(c.referral_count||0),0);
+
+  el.innerHTML = `
+  <div class="topbar">
+    <h2>🔗 Вирусен ефект & Препоръки</h2>
+    <button class="btn btn-primary" onclick="openViralModal()">+ Запиши препоръка</button>
+  </div>
+  <div class="content">
+    <div class="stat-grid" style="margin-bottom:16px">
+      <div class="stat-card accent"><div class="lbl">🔗 Общо препоръки</div><div class="val">${totalRef}</div></div>
+      <div class="stat-card"><div class="lbl">👑 Топ посланик</div>
+        <div class="val" style="font-size:16px">${topReferrers[0]?.name?.split(' ')[0]||'—'}</div>
+        <div class="sub">${topReferrers[0]?(topReferrers[0].referral_count||0)+' препоръки':''}</div>
+      </div>
+      <div class="stat-card"><div class="lbl">📊 % от препоръки</div>
+        <div class="val">${S.clients.length>0?Math.round(S.clients.filter(c=>c.how_found==='Препоръка').length/S.clients.length*100):0}%</div>
+      </div>
+      <div class="stat-card"><div class="lbl">👥 Клиенти общо</div><div class="val">${S.clients.length}</div></div>
+    </div>
+    ${topReferrers.length === 0
+      ? '<div class="empty-state"><div class="ico">🔗</div><p>Все още няма проследени препоръки</p></div>'
+      : `<div class="table-wrap">
+          <div class="table-hdr"><h3>🏆 Топ посланици</h3></div>
+          <table><thead><tr><th>Клиент</th><th>Препоръки</th><th>Ниво</th><th></th></tr></thead><tbody>
+          ${topReferrers.map((c,i) => `<tr>
+            <td><strong>${['🥇','🥈','🥉'][i]||''} ${escHtml(c.name)}</strong></td>
+            <td style="font-size:20px;font-weight:900;color:var(--rose-d)">${c.referral_count||0}</td>
+            <td><span class="badge bp">${(c.referral_count||0)>=5?'👑 VIP Посланик':(c.referral_count||0)>=3?'🥈 Супер':'🥉 Посланик'}</span></td>
+            <td>${c.phone?`<a href="https://wa.me/${c.phone.replace(/\D/g,'')}" target="_blank" class="btn btn-sm" style="background:#25D366;color:#fff;text-decoration:none">💬</a>`:'—'}</td>
+          </tr>`).join('')}
+          </tbody></table>
+        </div>`}
+  </div>`;
+};
+
+function openViralModal() {
+  let m = document.getElementById('mod-viral');
+  if (!m) {
+    m = document.createElement('div');
+    m.id = 'mod-viral'; m.className = 'overlay'; m.style.display='none';
+    m.innerHTML = `<div class="modal" style="width:420px">
+      <div class="modal-hdr"><h3>🔗 Запиши препоръка</h3><button class="close-btn" onclick="cm('mod-viral')">×</button></div>
+      <div class="fg"><label>Кой препоръча? (посланикът)</label><select id="mv-from"></select></div>
+      <div class="fg"><label>Кого препоръча? (новият клиент)</label><select id="mv-to"></select></div>
+      <div class="form-actions">
+        <button class="btn btn-secondary" onclick="cm('mod-viral')">Отказ</button>
+        <button class="btn btn-primary" onclick="saveViralRef()">Запази</button>
+      </div>
+    </div>`;
+    m.addEventListener('click', e => { if(e.target===m) cm('mod-viral'); });
+    document.body.appendChild(m);
+  }
+  fillSel('mv-from', S.clients, c=>c.id, c=>c.name);
+  fillSel('mv-to',   S.clients, c=>c.id, c=>c.name);
+  om('mod-viral');
+}
+
+async function saveViralRef() {
+  const fromId = document.getElementById('mv-from')?.value;
+  const toId   = document.getElementById('mv-to')?.value;
+  if (!fromId||!toId||fromId===toId) { toast('Избери различни клиенти', 'err'); return; }
+  const ref = S.clients.find(c=>c.id===fromId);
+  if (ref) await db.from('clients').update({ referral_count:(ref.referral_count||0)+1 }).eq('id',fromId);
+  await db.from('clients').update({ referred_by:fromId }).eq('id',toId);
+  await dbLoad('clients','clients','name');
+  cm('mod-viral');
+  toast('✅ Препоръката е записана!', 'ok');
+  go('viral');
+}
+
+// ── BULGARIAN STORY ─────────────────────────
+window.render_bulgarian = function(el) {
+  const bulgThemes = S.themes.filter(t => t.is_bulgarian_story);
+  const TALES = [
+    { name:'Вълкът и седемте козлета', age:'2-6г', mood:'Вълшебно ✨' },
+    { name:'Хитър Петър',              age:'4-10г',mood:'Игриво 🎪' },
+    { name:'Слънчо и Вятърът',         age:'1-5г', mood:'Вълшебно ✨' },
+    { name:'Сребърното копиче',        age:'3-8г', mood:'Романтично 🌸' },
+    { name:'Бялата лястовица',         age:'2-7г', mood:'Романтично 🌸' },
+    { name:'Самодивите',               age:'5-12г',mood:'Приказно 🏰' },
+    { name:'Дядо Мраз и Снегурочка',  age:'Всякакви',mood:'Вълшебно ✨' },
+    { name:'Магаренцето Петко',        age:'2-6г', mood:'Игриво 🎪' },
+  ];
+
+  el.innerHTML = `
+  <div class="topbar">
+    <h2>🇧🇬 Bulgarian Story Decor
+      <span style="font-size:11px;background:var(--green-l);color:var(--green);border-radius:20px;padding:2px 8px;margin-left:8px">Само Eleya Decor</span>
+    </h2>
+    <button class="btn btn-primary" onclick="go('themeStudio')">+ Нова приказка</button>
+  </div>
+  <div class="content">
+    <div style="background:linear-gradient(135deg,#1a5c2a,#2d8a45);border-radius:16px;padding:24px;margin-bottom:16px;color:#fff">
+      <div style="font-family:'Playfair Display',serif;font-size:22px;font-weight:700;margin-bottom:8px">Български народни приказки</div>
+      <div style="font-size:13px;opacity:.9;line-height:1.7;margin-bottom:12px">Докато всички правят Disney — ти разказваш историите на нашите деца. Без copyright. Само оригинален Eleya Decor дизайн.</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <span style="background:rgba(255,255,255,.2);border-radius:20px;padding:4px 12px;font-size:11px">✅ Без copyright</span>
+        <span style="background:rgba(255,255,255,.2);border-radius:20px;padding:4px 12px;font-size:11px">🎨 100% оригинален</span>
+        <span style="background:rgba(255,255,255,.2);border-radius:20px;padding:4px 12px;font-size:11px">🇧🇬 Единствена в България</span>
+      </div>
+    </div>
+
+    ${bulgThemes.length > 0 ? `
+    <div class="sdiv">🎨 Твоите Bulgarian Story теми (${bulgThemes.length})</div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:12px;margin-bottom:16px">
+      ${bulgThemes.map(t => `
+      <div class="table-wrap" style="padding:14px">
+        <div style="font-size:14px;font-weight:700;margin-bottom:4px">${escHtml(t.name)}</div>
+        <span class="badge bg">🇧🇬 Bulgarka</span>
+        ${t.is_public?'<span class="badge bb" style="margin-left:4px">📢 Публична</span>':''}
+      </div>`).join('')}
+    </div>` : ''}
+
+    <div class="sdiv">💡 Приказки за разработване</div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px">
+      ${TALES.map(tale => {
+        const exists = bulgThemes.some(t => t.name.toLowerCase().includes(tale.name.toLowerCase().slice(0,10)));
+        return `<div style="background:var(--card);border:1.5px solid ${exists?'var(--green)':'var(--border)'};border-radius:var(--r);padding:14px;opacity:${exists?.7:1}">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px">
+            <div style="font-size:14px;font-weight:700">${escHtml(tale.name)}</div>
+            <span class="badge ${exists?'bg':'bd'}">${exists?'✅ Имаш':'💡 Идея'}</span>
+          </div>
+          <div style="font-size:11px;color:var(--ink-m);margin-bottom:8px">${tale.age} · ${tale.mood}</div>
+          ${!exists?`<button class="btn btn-secondary btn-sm" style="width:100%" onclick="go('themeStudio')">🎨 Започни</button>`:''}
+        </div>`;
+      }).join('')}
+    </div>
+  </div>`;
+};
+
+console.log('✅ Всички липсващи модули добавени!');
+</script>
