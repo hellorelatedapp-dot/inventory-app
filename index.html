@@ -1642,6 +1642,34 @@ function printQuote(qid) {
 function printContract(qid) {
   toast('Договорът е в следващата версия 🚧', 'inf');
 }
+// Инвентар константи и променливи
+var invView    = 'grid';
+var invCatF    = 'all';
+var invStatusF = 'all';
+
+var PROD_STATUS = {
+  available:  { l:'✅ Наличен',    cls:'bg' },
+  low:        { l:'⚠️ Нисък',      cls:'bw' },
+  out:        { l:'❌ Изчерпан',   cls:'br' },
+  ordered:    { l:'📦 Поръчан',    cls:'bb' },
+  retired:    { l:'🗄 Архивиран',  cls:'bd' },
+};
+var ECO_MARK = {
+  biodegradable: '🌿',
+  recycled:      '♻️',
+  organic:       '🌱',
+};
+
+var PRODUCT_TYPES = {
+  consumable:   { l:'🎈 Консуматив',       cls:'bd' },
+  product:      { l:'🛍 Продукт',          cls:'bg' },
+  asset:        { l:'🏛 Реквизит',         cls:'bb' },
+  rental:       { l:'🎭 За наем',          cls:'bm' },
+  asset_rental: { l:'🏛🎭 Asset + Наем',  cls:'bw' },
+  raw_material: { l:'🧪 Суровина',         cls:'bd' },
+  handmade:     { l:'🌸 Handmade',         cls:'br' },
+};
+
 window.render_inventory = function(el) {
   var q = searchQ.toLowerCase();
   var list = S.products.filter(function(p) {
@@ -7297,4 +7325,203 @@ function printPackingList(qid) {
 }
 
 console.log('✅ QR Етикети + Packing List заредени!');
+</script>
+
+<script>
+'use strict';
+// ═══════════════════════════════════════════
+// ЛИПСВАЩИ КОНСТАНТИ И ФУНКЦИИ
+// ═══════════════════════════════════════════
+
+// THEME_STATUS (липсваше)
+if (typeof THEME_STATUS === 'undefined') {
+  window.THEME_STATUS = {
+    idea:       { l:'💡 Идея',          cls:'bd' },
+    developing: { l:'🎨 В разработка',  cls:'bw' },
+    ready80:    { l:'80% Готова',       cls:'bb' },
+    catalog:    { l:'📢 В каталога',    cls:'bg' },
+    exclusive:  { l:'👑 Ексклузивна',  cls:'bp' },
+    retired:    { l:'📦 Пенсионирана', cls:'bd' },
+  };
+}
+
+// tsTab (липсваше)
+if (typeof tsTab === 'undefined') window.tsTab = 'all';
+if (typeof seasonYear === 'undefined') window.seasonYear = new Date().getFullYear();
+
+// ── Handmade Modal ────────────────────────────
+window.openHandmadeModal = function(id) {
+  id = id || null;
+  buildHandmadeModal();
+  editId.handmade = id;
+  const p = id ? S.products.find(x => x.id===id) : null;
+  document.getElementById('mhm-title').textContent = id ? 'Редактирай handmade' : 'Нов Handmade продукт';
+  document.getElementById('mhm-name').value    = p?.name          || '';
+  document.getElementById('mhm-type').value    = p?.handmade_type || 'candle';
+  document.getElementById('mhm-qty').value     = p?.quantity      || 0;
+  document.getElementById('mhm-min').value     = p?.min_quantity  || 5;
+  document.getElementById('mhm-unit').value    = p?.unit          || 'бр';
+  document.getElementById('mhm-cost').value    = p?.cost_price    || 0;
+  document.getElementById('mhm-price').value   = p?.price         || 0;
+  document.getElementById('mhm-notes').value   = p?.notes         || '';
+  document.getElementById('mhm-image').value   = p?.image_url     || '';
+  updateHMCalc();
+  om('mod-handmade');
+};
+
+function buildHandmadeModal() {
+  if (document.getElementById('mod-handmade')) return;
+  const m = document.createElement('div');
+  m.id = 'mod-handmade'; m.className = 'overlay'; m.style.display='none';
+  m.innerHTML = `<div class="modal" style="width:540px">
+    <div class="modal-hdr">
+      <h3 id="mhm-title">Нов Handmade продукт</h3>
+      <button class="close-btn" onclick="cm('mod-handmade')">×</button>
+    </div>
+    <div class="fr">
+      <div class="fg"><label>Наименование *</label><input id="mhm-name" placeholder="Розова свещ ванилия"></div>
+      <div class="fg"><label>Тип</label>
+        <select id="mhm-type">
+          <option value="candle">🕯️ Свещ</option>
+          <option value="soap">🧼 Биосапун</option>
+          <option value="bouquet">💐 Букет сапунен</option>
+          <option value="clay">🏺 Полимерна глина</option>
+          <option value="sign">✍️ Надпис 3D</option>
+          <option value="figure">🎭 Фигура</option>
+          <option value="gift">🎁 Подаръче</option>
+          <option value="other">📦 Друго</option>
+        </select>
+      </div>
+    </div>
+    <div class="fr3">
+      <div class="fg"><label>Наличност</label><input type="number" id="mhm-qty" value="0" min="0"></div>
+      <div class="fg"><label>Минимум</label><input type="number" id="mhm-min" value="5" min="0"></div>
+      <div class="fg"><label>Мерна ед.</label>
+        <select id="mhm-unit"><option>бр</option><option>компл.</option><option>букет</option><option>кутия</option></select>
+      </div>
+    </div>
+    <div class="fr">
+      <div class="fg"><label>Себестойност (€) — материали</label>
+        <input type="number" id="mhm-cost" value="0" min="0" step="0.01" oninput="updateHMCalc()">
+      </div>
+      <div class="fg"><label>Продажна цена (€)</label>
+        <input type="number" id="mhm-price" value="0" min="0" step="0.01" oninput="updateHMCalc()">
+      </div>
+    </div>
+    <div id="mhm-calc" style="background:var(--rose-ll);border-radius:var(--r-sm);padding:10px 12px;margin-bottom:10px;display:none">
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;text-align:center">
+        <div><div style="font-size:10px;color:var(--ink-m)">Себестойност</div><div id="mhm-c-cost" style="font-size:16px;font-weight:900;color:var(--red)">—</div></div>
+        <div><div style="font-size:10px;color:var(--ink-m)">Препоръчана ×2.5</div><div id="mhm-c-rec" style="font-size:16px;font-weight:900;color:var(--amber)">—</div></div>
+        <div><div style="font-size:10px;color:var(--ink-m)">Марж</div><div id="mhm-c-margin" style="font-size:16px;font-weight:900;color:var(--green)">—</div></div>
+      </div>
+    </div>
+    <div class="fg"><label>Съставки / Бележки (ще се печатат на етикета)</label>
+      <textarea id="mhm-notes" rows="2" placeholder="Пчелен восък, ванилия, розово масло · Гори ~30ч"></textarea>
+    </div>
+    <div class="fg"><label>Снимка (URL)</label><input id="mhm-image" placeholder="https://..."></div>
+    <div class="form-actions">
+      <button class="btn btn-secondary" onclick="cm('mod-handmade')">Отказ</button>
+      <button id="mhm-del" class="btn btn-danger" style="display:none" onclick="delHandmade()">🗑 Изтрий</button>
+      <button class="btn btn-primary" onclick="saveHandmadeProduct()">Запази</button>
+    </div>
+  </div>`;
+  m.addEventListener('click', e => { if(e.target===m) cm('mod-handmade'); });
+  document.body.appendChild(m);
+}
+
+function updateHMCalc() {
+  const cost  = +document.getElementById('mhm-cost')?.value  || 0;
+  const price = +document.getElementById('mhm-price')?.value || 0;
+  const div   = document.getElementById('mhm-calc');
+  if (!div) return;
+  div.style.display = (cost > 0 || price > 0) ? 'block' : 'none';
+  const rec    = cost * 2.5;
+  const margin = price > 0 && cost > 0 ? Math.round((1-cost/price)*100) : 0;
+  const cc = document.getElementById('mhm-c-cost');
+  const cr = document.getElementById('mhm-c-rec');
+  const cm2= document.getElementById('mhm-c-margin');
+  if (cc) cc.textContent = eur(cost);
+  if (cr) cr.textContent = eur(rec);
+  if (cm2) { cm2.textContent = margin+'%'; cm2.style.color = margin>=50?'var(--green)':margin>=30?'var(--amber)':'var(--red)'; }
+}
+
+async function saveHandmadeProduct() {
+  const name = document.getElementById('mhm-name')?.value.trim();
+  if (!name) { toast('Въведи наименование', 'err'); return; }
+
+  const payload = {
+    name,
+    product_type:  'handmade',
+    handmade_type: document.getElementById('mhm-type')?.value || 'other',
+    quantity:     +document.getElementById('mhm-qty')?.value  || 0,
+    min_quantity: +document.getElementById('mhm-min')?.value  || 5,
+    unit:          document.getElementById('mhm-unit')?.value || 'бр',
+    cost_price:   +document.getElementById('mhm-cost')?.value  || 0,
+    price:        +document.getElementById('mhm-price')?.value || 0,
+    notes:         document.getElementById('mhm-notes')?.value.trim() || null,
+    image_url:     document.getElementById('mhm-image')?.value.trim() || null,
+    status:       'available',
+  };
+
+  try {
+    if (editId.handmade) {
+      const { error } = await db.from('products').update(payload).eq('id', editId.handmade);
+      if (error) throw error;
+    } else {
+      const { error } = await db.from('products').insert(payload);
+      if (error) throw error;
+    }
+    await dbLoad('products','products','name','*,categories(name,color),suppliers(name)');
+    cm('mod-handmade');
+    toast('✅ Продуктът е запазен!', 'ok');
+    go(curPage);
+  } catch(e) {
+    console.error('saveHandmade:', e);
+    toast('Грешка: ' + (e.message||e), 'err');
+  }
+}
+
+async function delHandmade() {
+  const id = editId.handmade;
+  if (!id || !confirm('Изтрий продукта?')) return;
+  await db.from('products').delete().eq('id', id);
+  await dbLoad('products','products','name','*,categories(name,color),suppliers(name)');
+  cm('mod-handmade');
+  toast('Продуктът е изтрит', 'ok');
+  go(curPage);
+}
+
+// Patch render_handmade — добавяме бутон с правилния modal
+var _origHandmade = window.render_handmade;
+window.render_handmade = function(el) {
+  _origHandmade(el);
+  // Заменяме "+ Нов продукт" бутона
+  setTimeout(() => {
+    const btn = el.querySelector('.topbar .btn-primary');
+    if (btn) btn.onclick = () => openHandmadeModal();
+    // Добавяме edit бутони към картите
+    el.querySelectorAll('.table-wrap .btn-primary').forEach(b => {
+      const card = b.closest('.table-wrap');
+      if (!card) return;
+      // Намираме product ID от quickMov call
+      const qm = b.getAttribute('onclick');
+      if (qm && qm.includes('quickMov')) {
+        const pid = qm.match(/'([^']+)'/)?.[1];
+        if (pid) {
+          const editBtn = document.createElement('button');
+          editBtn.className = 'icon-btn';
+          editBtn.textContent = '✏️';
+          editBtn.onclick = () => openHandmadeModal(pid);
+          editBtn.style.cssText = 'margin-left:4px';
+          b.parentNode?.appendChild(editBtn);
+        }
+      }
+    });
+  }, 50);
+};
+
+// ── Theme Studio — добавяме THEME_STATUS ──────
+// (вече е дефиниран горе, render_themeStudio го използва)
+
+console.log('✅ Handmade modal + THEME_STATUS + tsTab добавени!');
 </script>
