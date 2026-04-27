@@ -382,7 +382,8 @@ tr:hover td { background:var(--rose-ll); }
 <!-- TOAST -->
 <div id="toast-container"></div>
 
-<script>'use strict';
+<script>
+'use strict';
 // ═══════════════════════════════════════════
 // КОНФИГУРАЦИЯ
 // ═══════════════════════════════════════════
@@ -3436,8 +3437,8 @@ function printQuote(qid) {
     .sig-box{border-top:2px solid #1c1118;padding-top:8px;font-size:12px;color:#6b4f5a}
     .footer{text-align:center;font-size:10px;color:#b89aa4;margin-top:30px;border-top:1px solid #f2d5dc;padding-top:12px}
     @media print{body{padding:20px}.no-print{display:none}}
-  </style>
-  </head><body>
+  <\/style>
+  <\/head><body>
   <div class="header">
     <div><div class="brand">🌸 Eleya Decor</div><div class="brand-sub">Декорации за специални моменти · Казанлък</div></div>
     <div class="offer-no"><div class="info-label">Оферта №</div><strong>${qid.slice(-6).toUpperCase()}</strong><div style="font-size:11px;color:#6b4f5a;margin-top:3px">Дата: ${today()}</div></div>
@@ -3487,7 +3488,7 @@ function printQuote(qid) {
   <div class="no-print" style="margin-top:20px;text-align:center">
     <button onclick="window.print()" style="padding:10px 24px;background:#c9748a;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:14px;font-weight:600">🖨 Принтирай / Запази като PDF</button>
   </div>
-  </body></html>`);
+  <\/body><\/html>`);
   win.document.close();
 }
 
@@ -3513,7 +3514,7 @@ function printContract(qid) {
     .sign-grid{display:grid;grid-template-columns:1fr 1fr;gap:40px;margin-top:50px}
     .sign-box{border-top:2px solid #1c1118;padding-top:8px;font-size:12px;color:#6b4f5a}
     @media print{.no-print{display:none}}
-  </style></head><body>
+  <\/style><\/head><body>
 
   <h1>ДОГОВОР ЗА ДЕКОРАЦИЯ</h1>
   <div class="subtitle">№ ${qid.slice(-6).toUpperCase()} · Дата: ${today()}</div>
@@ -3555,7 +3556,7 @@ function printContract(qid) {
   <div class="no-print" style="margin-top:24px;text-align:center">
     <button onclick="window.print()" style="padding:10px 24px;background:#c9748a;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:14px;font-weight:600">🖨 Принтирай / Запази като PDF</button>
   </div>
-  </body></html>`);
+  <\/body><\/html>`);
   win.document.close();
 }
 
@@ -4703,13 +4704,13 @@ function updateImgPreview(inputId, previewId) {
   var item1 = document.createElement('div');
   item1.className = 'nav-item';
   item1.dataset.page = 'publicCatalog';
-  item1.onclick = function(){ go('publicCatalog'); };
+  item1.dataset.page = 'publicCatalog';
   item1.innerHTML = '<svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="14" height="14"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2H5a2 2 0 00-2-2z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V5a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>Публичен каталог';
 
   var item2 = document.createElement('div');
   item2.className = 'nav-item';
   item2.dataset.page = 'inquiryForm';
-  item2.onclick = function(){ go('inquiryForm'); };
+  item2.dataset.page = 'inquiryForm';
   item2.innerHTML = '<svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="14" height="14"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"/></svg>Smart форма';
 
   nav.appendChild(sec);
@@ -5017,8 +5018,8 @@ function previewPublicPage() {
     .footer{background:#1c1118;color:#fff;text-align:center;padding:40px 20px;margin-top:40px}
     .footer h2{font-family:'Playfair Display',serif;font-size:24px;margin-bottom:8px}
     @media(max-width:600px){.hero h1{font-size:26px}.grid{grid-template-columns:1fr;padding:16px}}
-  </style>
-  </head><body>
+  <\/style>
+  <\/head><body>
 
   <div class="hero">
     <h1>🌸 Eleya Decor</h1>
@@ -6984,12 +6985,12 @@ function printLabel(labelId, name) {
     * { box-sizing:border-box; margin:0; padding:0; }
     body { background:#fff; display:flex; align-items:center; justify-content:center; min-height:100vh; font-family:'DM Sans',sans-serif; }
     @media print { body { min-height:auto; } .no-print { display:none; } }
-  </style></head><body>
+  <\/style><\/head><body>
   ${clone.outerHTML}
   <div class="no-print" style="margin-top:20px;text-align:center">
     <button onclick="window.print()" style="padding:10px 24px;background:#c9748a;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:14px;font-weight:600">🖨️ Принтирай</button>
   </div>
-  </body></html>`);
+  <\/body><\/html>`);
   win.document.close();
 }
 
@@ -7235,7 +7236,7 @@ function printPackingList(qid) {
   .status{padding:2px 8px;border-radius:20px;font-size:9px;font-weight:700}
   .footer{text-align:center;font-size:10px;color:#b89aa4;border-top:1px solid #eedde3;padding-top:10px}
   @media print{.no-print{display:none}}
-  </style></head><body>
+  <\/style><\/head><body>
   <h1>📋 Packing List</h1>
   <div class="sub">${q.clients?.name||'—'} · ${fmtDate(q.event_date)}${q.event_time?' · '+fmtTime(q.event_time):''} · ${q.event_type||'—'}</div>
   <table><thead><tr><th>□</th><th>Артикул</th><th>Кол.</th><th>Раздел</th><th>Статус</th><th>Бележка</th></tr></thead>
@@ -7252,7 +7253,7 @@ function printPackingList(qid) {
   <div class="footer">Eleya Decor · Генерирано: ${fmtDate(today())}</div>
   <div class="no-print" style="margin-top:16px;text-align:center">
     <button onclick="window.print()" style="padding:10px 24px;background:#c9748a;color:#fff;border:none;border-radius:8px;cursor:pointer">🖨️ Принтирай</button>
-  </div></body></html>`);
+  </div><\/body><\/html>`);
   win.document.close();
 }
 
@@ -7777,7 +7778,6 @@ console.log('✅ Handmade v2 — с тип употреба (продажба/н
     const item = document.createElement('div');
     item.className = 'nav-item';
     item.dataset.page = 'tasks';
-    item.onclick = () => go('tasks');
     item.innerHTML = '✅ Задачи';
     myDayItem.insertAdjacentElement('afterend', item);
   }
@@ -8708,7 +8708,7 @@ window.printQuote = async function(qid) {
   .viz-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;margin-bottom:16px}
   .viz-grid img{width:100%;border-radius:8px;border:1px solid #f2d5dc;object-fit:cover;max-height:200px}
   @media print{.no-print{display:none}}
-  </style></head><body>
+  <\/style><\/head><body>
   <div class="hdr">
     <div><div class="brand">🌸 Eleya Decor</div>
     <div style="font-size:11px;color:#6b4f5a;margin-top:3px">Декорации за специални моменти · Казанлък</div></div>
@@ -8785,7 +8785,7 @@ window.printQuote = async function(qid) {
   <div class="footer">Eleya Decor · Декорации за специални моменти · Казанлък, България<br>Генерирано: ${fmtDate(today())}</div>
   <div class="no-print" style="margin-top:18px;text-align:center">
     <button onclick="window.print()" style="padding:10px 24px;background:#c9748a;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:14px;font-weight:600">🖨 Принтирай / PDF</button>
-  </div></body></html>`);
+  </div><\/body><\/html>`);
   win.document.close();
 };
 
