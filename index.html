@@ -1638,52 +1638,7 @@ var PRODUCT_TYPES = {
   handmade:     { l:'🌸 Handmade',         cls:'br' },
 };
 
-window.render_inventory = function(el) {
-  var q = searchQ.toLowerCase();
-  var list = S.products.filter(function(p) {
-    return !q || p.name.toLowerCase().includes(q) || (p.sku||'').toLowerCase().includes(q);
-  });
-  if (invCatF    !== 'all') list = list.filter(function(p){ return p.category_id === invCatF; });
-  if (invStatusF !== 'all') list = list.filter(function(p){ return p.status === invStatusF; });
-  var lowCount = S.products.filter(function(p){ return p.quantity <= (p.min_quantity||0); }).length;
-
-  el.innerHTML = `
-  <div class="topbar">
-    <h2>Инвентар <span style="font-size:13px;color:var(--ink-m);font-weight:400">${S.products.length}</span></h2>
-    <div class="search-wrap">
-      <svg width="13" height="13" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-      <input placeholder="Търси продукт, SKU..." value="${q}"
-        oninput="searchQ=this.value;render_inventory(document.getElementById('page-content'))">
-    </div>
-    <button class="btn btn-secondary btn-sm" onclick="openCatModal()">+ Категория</button>
-    <button class="btn btn-primary" onclick="openProductModal()">+ Продукт</button>
-  </div>
-  <div class="content">
-    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:14px">
-      <div class="tabs" style="margin:0">
-        <div class="tab ${invView==='grid'?'on':''}" onclick="invView='grid';render_inventory(document.getElementById('page-content'))">⊞ Карти</div>
-        <div class="tab ${invView==='list'?'on':''}" onclick="invView='list';render_inventory(document.getElementById('page-content'))">☰ Списък</div>
-      </div>
-      <select onchange="invCatF=this.value;render_inventory(document.getElementById('page-content'))"
-        style="padding:5px 10px;border:1.5px solid var(--border);border-radius:var(--r-sm);font-size:12px;background:var(--card);color:var(--ink)">
-        <option value="all">Всички категории</option>
-        ${S.categories.map(function(c){ return '<option value="'+c.id+'"'+(invCatF===c.id?' selected':'')+'>'+(c.icon||'')+c.name+'</option>'; }).join('')}
-      </select>
-      <select onchange="invStatusF=this.value;render_inventory(document.getElementById('page-content'))"
-        style="padding:5px 10px;border:1.5px solid var(--border);border-radius:var(--r-sm);font-size:12px;background:var(--card);color:var(--ink)">
-        <option value="all">Всички статуси</option>
-        ${Object.entries(PROD_STATUS).map(function(e){ return '<option value="'+e[0]+'"'+(invStatusF===e[0]?' selected':'')+'>'+e[1].l+'</option>'; }).join('')}
-      </select>
-      ${lowCount > 0 ? '<span class="badge br">⚠️ '+lowCount+' ниски наличности</span>' : ''}
-      <button class="btn btn-secondary btn-sm" style="margin-left:auto" onclick="exportInvCSV()">⬇ CSV</button>
-    </div>
-    ${list.length === 0
-      ? '<div class="empty-state"><div class="ico">📦</div><p>Няма продукти</p></div>'
-      : invView === 'grid'
-        ? '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(195px,1fr));gap:12px">'+list.map(function(p){ return productCard(p); }).join('')+'</div>'
-        : productTable(list)}
-  </div>`;
-};
+// render_inventory moved
 
 function productCard(p) {
   var st  = PROD_STATUS[p.status] || PROD_STATUS.available;
@@ -5979,6 +5934,180 @@ window.dbLoad = async function(key, table, order, select, opts) {
 console.log('✅ Eleya Decor Studio v2 — чиста версия заредена!');
 
 </script>
+<script>
+window.render_inventory = function(el) {
+  var q = searchQ.toLowerCase();
+  var list = S.products.filter(function(p) {
+    return !q || p.name.toLowerCase().includes(q) || (p.sku||'').toLowerCase().includes(q);
+  });
+  if (invCatF    !== 'all') list = list.filter(function(p){ return p.category_id === invCatF; });
+  if (invStatusF !== 'all') list = list.filter(function(p){ return p.status === invStatusF; });
+  var lowCount = S.products.filter(function(p){ return p.quantity <= (p.min_quantity||0); }).length;
+
+  el.innerHTML = `
+  <div class="topbar">
+    <h2>Инвентар <span style="font-size:13px;color:var(--ink-m);font-weight:400">${S.products.length}</span></h2>
+    <div class="search-wrap">
+      <svg width="13" height="13" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+      <input placeholder="Търси продукт, SKU..." value="${q}"
+        oninput="searchQ=this.value;render_inventory(document.getElementById('page-content'))">
+    </div>
+    <button class="btn btn-secondary btn-sm" onclick="openCatModal()">+ Категория</button>
+    <button class="btn btn-primary" onclick="openProductModal()">+ Продукт</button>
+  </div>
+  <div class="content">
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:14px">
+      <div class="tabs" style="margin:0">
+        <div class="tab ${invView==='grid'?'on':''}" onclick="invView='grid';render_inventory(document.getElementById('page-content'))">⊞ Карти</div>
+        <div class="tab ${invView==='list'?'on':''}" onclick="invView='list';render_inventory(document.getElementById('page-content'))">☰ Списък</div>
+      </div>
+      <select onchange="invCatF=this.value;render_inventory(document.getElementById('page-content'))"
+        style="padding:5px 10px;border:1.5px solid var(--border);border-radius:var(--r-sm);font-size:12px;background:var(--card);color:var(--ink)">
+        <option value="all">Всички категории</option>
+        ${S.categories.map(function(c){ return '<option value="'+c.id+'"'+(invCatF===c.id?' selected':'')+'>'+(c.icon||'')+c.name+'</option>'; }).join('')}
+      </select>
+      <select onchange="invStatusF=this.value;render_inventory(document.getElementById('page-content'))"
+        style="padding:5px 10px;border:1.5px solid var(--border);border-radius:var(--r-sm);font-size:12px;background:var(--card);color:var(--ink)">
+        <option value="all">Всички статуси</option>
+        ${Object.entries(PROD_STATUS).map(function(e){ return '<option value="'+e[0]+'"'+(invStatusF===e[0]?' selected':'')+'>'+e[1].l+'</option>'; }).join('')}
+      </select>
+      ${lowCount > 0 ? '<span class="badge br">⚠️ '+lowCount+' ниски наличности</span>' : ''}
+      <button class="btn btn-secondary btn-sm" style="margin-left:auto" onclick="exportInvCSV()">⬇ CSV</button>
+    </div>
+    ${list.length === 0
+      ? '<div class="empty-state"><div class="ico">📦</div><p>Няма продукти</p></div>'
+      : invView === 'grid'
+        ? '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(195px,1fr));gap:12px">'+list.map(function(p){ return productCard(p); }).join('')+'</div>'
+        : productTable(list)}
+  </div>`;
+};
+
+window.printQuote = async function(qid) {
+  const res = await db.from('quotes')
+    .select('*,clients(name,phone,email),quote_items(*)')
+    .eq('id', qid).single();
+  const q = res.data;
+  if (!q) { toast('Офертата не е намерена', 'err'); return; }
+
+  const cl    = q.clients;
+  const items = (q.quote_items || []).filter(i => i.section !== 'Услуги' && !['🚚','🔧','📦'].some(e => (i.description||'').startsWith(e)));
+  const services = (q.quote_items || []).filter(i => ['🚚','🔧','📦'].some(e => (i.description||'').startsWith(e)));
+  const total = q.total_price || 0;
+  const dep   = q.deposit_amount || 0;
+  const theme = S.themes.find(t => t.id === q.theme_id);
+  const vizUrls = [q.viz_url_1, q.viz_url_2, q.viz_url_3].filter(Boolean);
+
+  const win = window.open('','_blank');
+  win.document.write(`<!DOCTYPE html><html lang="bg"><head><meta charset="UTF-8">
+  <title>Оферта — ${cl?.name||''}</title>
+  <style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:Georgia,serif;color:#1c1118;background:#fff;padding:40px;font-size:13px}
+  .hdr{display:flex;justify-content:space-between;border-bottom:3px solid #c9748a;padding-bottom:18px;margin-bottom:22px}
+  .brand{font-size:24px;font-weight:700;color:#c9748a}
+  .info-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:18px}
+  .info-block{background:#fdf6f8;border-radius:8px;padding:12px}
+  .info-lbl{font-size:9px;text-transform:uppercase;letter-spacing:.5px;color:#6b4f5a;margin-bottom:3px}
+  .info-val{font-size:14px;font-weight:600}
+  h2{font-size:14px;color:#c9748a;margin:18px 0 8px;border-bottom:1px solid #f2d5dc;padding-bottom:4px}
+  table{width:100%;border-collapse:collapse;margin-bottom:14px}
+  th{background:#fdf6f8;padding:7px 10px;text-align:left;font-size:10px;text-transform:uppercase;color:#6b4f5a;border-bottom:2px solid #f2d5dc}
+  td{padding:8px 10px;border-bottom:1px solid #f5e8ec}
+  .svc-box{background:#fdf6f8;border-radius:8px;padding:10px 14px;margin-bottom:12px}
+  .svc-row{display:flex;justify-content:space-between;padding:4px 0;font-size:12px;border-bottom:1px solid #f2d5dc}
+  .svc-row:last-child{border-bottom:none}
+  .total-box{background:#fdf6f8;border-radius:10px;padding:14px;margin-bottom:20px}
+  .total-row{display:flex;justify-content:space-between;margin-bottom:5px}
+  .total-final{font-size:17px;font-weight:700;color:#c9748a;border-top:2px solid #c9748a;padding-top:9px;margin-top:9px}
+  .conditions{font-size:11px;color:#6b4f5a;line-height:1.7;margin-bottom:20px}
+  .sig{display:grid;grid-template-columns:1fr 1fr;gap:40px;margin-top:36px}
+  .sig-box{border-top:2px solid #1c1118;padding-top:8px;font-size:12px;color:#6b4f5a}
+  .footer{text-align:center;font-size:10px;color:#b89aa4;margin-top:28px;border-top:1px solid #f2d5dc;padding-top:10px}
+  .viz-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;margin-bottom:16px}
+  .viz-grid img{width:100%;border-radius:8px;border:1px solid #f2d5dc;object-fit:cover;max-height:200px}
+  @media print{.no-print{display:none}}
+  <\/style><\/head><body>
+  <div class="hdr">
+    <div><div class="brand">🌸 Eleya Decor</div>
+    <div style="font-size:11px;color:#6b4f5a;margin-top:3px">Декорации за специални моменти · Казанлък</div></div>
+    <div style="text-align:right">
+      <div style="font-size:10px;text-transform:uppercase;color:#6b4f5a">Оферта №</div>
+      <div style="font-size:18px;font-weight:700">${qid.slice(-6).toUpperCase()}</div>
+      <div style="font-size:11px;color:#6b4f5a;margin-top:2px">Дата: ${fmtDate(today())}</div>
+    </div>
+  </div>
+
+  <div class="info-grid">
+    <div class="info-block">
+      <div class="info-lbl">Клиент</div>
+      <div class="info-val">${cl?.name||'—'}</div>
+      ${cl?.phone?`<div style="font-size:11px;color:#6b4f5a;margin-top:2px">📞 ${cl.phone}</div>`:''}
+      ${cl?.email?`<div style="font-size:11px;color:#6b4f5a;">✉️ ${cl.email}</div>`:''}
+    </div>
+    <div class="info-block">
+      <div class="info-lbl">Събитие</div>
+      <div class="info-val">${q.event_type||'—'}</div>
+      ${q.event_date?`<div style="font-size:11px;color:#6b4f5a;margin-top:2px">📅 ${fmtDate(q.event_date)}${q.event_time?' · '+fmtTime(q.event_time):''}</div>`:''}
+      ${q.address?`<div style="font-size:11px;color:#6b4f5a;">📍 ${q.address}</div>`:''}
+      ${theme?`<div style="font-size:11px;color:#c9748a;margin-top:2px;">🎨 Тема: ${theme.name}</div>`:''}
+    </div>
+    ${q.guests?`<div class="info-block"><div class="info-lbl">Брой гости</div><div class="info-val">👥 ${q.guests} гости</div></div>`:''}
+    ${q.valid_until?`<div class="info-block"><div class="info-lbl">Валидна до</div><div class="info-val">${fmtDate(q.valid_until)}</div></div>`:''}
+  </div>
+
+  ${vizUrls.length > 0 ? `
+  <h2>🖼 Визуализации</h2>
+  <div class="viz-grid">
+    ${vizUrls.map(url => `<img src="${url}" alt="Визуализация" onerror="this.style.display='none'">`).join('')}
+  </div>` : ''}
+
+  ${items.length > 0 ? `
+  <h2>Артикули и услуги</h2>
+  <table><thead><tr><th>Описание</th><th>Раздел</th><th style="text-align:right">Бр.</th><th style="text-align:right">Ед. цена</th><th style="text-align:right">Общо</th></tr></thead>
+  <tbody>
+  ${items.map(i => `<tr>
+    <td><strong>${i.description||'—'}</strong></td>
+    <td style="color:#6b4f5a;font-size:11px">${i.section||'—'}</td>
+    <td style="text-align:right">${i.quantity}</td>
+    <td style="text-align:right">${eur(i.unit_price)}</td>
+    <td style="text-align:right;font-weight:600">${eur((i.unit_price||0)*(i.quantity||0))}</td>
+  </tr>`).join('')}
+  </tbody></table>` : ''}
+
+  ${services.length > 0 ? `
+  <h2>Допълнителни услуги</h2>
+  <div class="svc-box">
+    ${services.map(s => `<div class="svc-row"><span><strong>${s.description}</strong></span><span>${eur(s.unit_price)}</span></div>`).join('')}
+  </div>` : ''}
+
+  <div class="total-box">
+    <div class="total-row"><span>Артикули</span><span>${eur(items.reduce((s,i)=>s+(i.unit_price||0)*(i.quantity||0),0))}</span></div>
+    ${services.length>0?`<div class="total-row"><span>Услуги</span><span>${eur(services.reduce((s,i)=>s+(i.unit_price||0),0))}</span></div>`:''}
+    ${dep>0?`<div class="total-row"><span>Депозит (аванс)</span><span style="color:#c9748a">${eur(dep)}</span></div>`:''}
+    ${dep>0?`<div class="total-row"><span>Остатък</span><span>${eur(total-dep)}</span></div>`:''}
+    <div class="total-row total-final"><span>ОБЩА СУМА</span><span>${eur(total)}</span></div>
+  </div>
+
+  ${q.notes?`<div class="conditions"><strong>Бележки:</strong><br>${q.notes}</div>`:''}
+  <div class="conditions"><strong>Условия:</strong><br>
+  • Офертата е валидна до ${q.valid_until?fmtDate(q.valid_until):'7 дни от датата на издаване'}.<br>
+  ${dep>0?`• Депозитът от ${eur(dep)} е дължим при потвърждение на офертата.<br>`:''}
+  • Остатъкът се заплаща в деня на събитието.<br>
+  • При анулиране до 14 дни — депозитът се връща. До 7 дни — 50%. По-малко от 7 дни — не се връща.<br>
+  • Визуализациите са интелектуална собственост на Eleya Decor.</div>
+
+  <div class="sig">
+    <div class="sig-box">Изготвил: Eleya Decor<br><br><br>Подпис: _______________<br>Дата: _______________</div>
+    <div class="sig-box">Клиент: ${cl?.name||'_______________'}<br><br><br>Подпис: _______________<br>Дата: _______________</div>
+  </div>
+  <div class="footer">Eleya Decor · Декорации за специални моменти · Казанлък, България<br>Генерирано: ${fmtDate(today())}</div>
+  <div class="no-print" style="margin-top:18px;text-align:center">
+    <button onclick="window.print()" style="padding:10px 24px;background:#c9748a;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:14px;font-weight:600">🖨 Принтирай / PDF</button>
+  </div><\/body><\/html>`);
+  win.document.close();
+};
+</script>
+
 </body>
 </html>
 <script>
@@ -8664,130 +8793,7 @@ window.saveQuote = async function() {
 };
 
 // ── 6. PDF с правилни услуги + визуализации ──
-window.printQuote = async function(qid) {
-  const res = await db.from('quotes')
-    .select('*,clients(name,phone,email),quote_items(*)')
-    .eq('id', qid).single();
-  const q = res.data;
-  if (!q) { toast('Офертата не е намерена', 'err'); return; }
-
-  const cl    = q.clients;
-  const items = (q.quote_items || []).filter(i => i.section !== 'Услуги' && !['🚚','🔧','📦'].some(e => (i.description||'').startsWith(e)));
-  const services = (q.quote_items || []).filter(i => ['🚚','🔧','📦'].some(e => (i.description||'').startsWith(e)));
-  const total = q.total_price || 0;
-  const dep   = q.deposit_amount || 0;
-  const theme = S.themes.find(t => t.id === q.theme_id);
-  const vizUrls = [q.viz_url_1, q.viz_url_2, q.viz_url_3].filter(Boolean);
-
-  const win = window.open('','_blank');
-  win.document.write(`<!DOCTYPE html><html lang="bg"><head><meta charset="UTF-8">
-  <title>Оферта — ${cl?.name||''}</title>
-  <style>
-  *{box-sizing:border-box;margin:0;padding:0}
-  body{font-family:Georgia,serif;color:#1c1118;background:#fff;padding:40px;font-size:13px}
-  .hdr{display:flex;justify-content:space-between;border-bottom:3px solid #c9748a;padding-bottom:18px;margin-bottom:22px}
-  .brand{font-size:24px;font-weight:700;color:#c9748a}
-  .info-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:18px}
-  .info-block{background:#fdf6f8;border-radius:8px;padding:12px}
-  .info-lbl{font-size:9px;text-transform:uppercase;letter-spacing:.5px;color:#6b4f5a;margin-bottom:3px}
-  .info-val{font-size:14px;font-weight:600}
-  h2{font-size:14px;color:#c9748a;margin:18px 0 8px;border-bottom:1px solid #f2d5dc;padding-bottom:4px}
-  table{width:100%;border-collapse:collapse;margin-bottom:14px}
-  th{background:#fdf6f8;padding:7px 10px;text-align:left;font-size:10px;text-transform:uppercase;color:#6b4f5a;border-bottom:2px solid #f2d5dc}
-  td{padding:8px 10px;border-bottom:1px solid #f5e8ec}
-  .svc-box{background:#fdf6f8;border-radius:8px;padding:10px 14px;margin-bottom:12px}
-  .svc-row{display:flex;justify-content:space-between;padding:4px 0;font-size:12px;border-bottom:1px solid #f2d5dc}
-  .svc-row:last-child{border-bottom:none}
-  .total-box{background:#fdf6f8;border-radius:10px;padding:14px;margin-bottom:20px}
-  .total-row{display:flex;justify-content:space-between;margin-bottom:5px}
-  .total-final{font-size:17px;font-weight:700;color:#c9748a;border-top:2px solid #c9748a;padding-top:9px;margin-top:9px}
-  .conditions{font-size:11px;color:#6b4f5a;line-height:1.7;margin-bottom:20px}
-  .sig{display:grid;grid-template-columns:1fr 1fr;gap:40px;margin-top:36px}
-  .sig-box{border-top:2px solid #1c1118;padding-top:8px;font-size:12px;color:#6b4f5a}
-  .footer{text-align:center;font-size:10px;color:#b89aa4;margin-top:28px;border-top:1px solid #f2d5dc;padding-top:10px}
-  .viz-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;margin-bottom:16px}
-  .viz-grid img{width:100%;border-radius:8px;border:1px solid #f2d5dc;object-fit:cover;max-height:200px}
-  @media print{.no-print{display:none}}
-  <\/style><\/head><body>
-  <div class="hdr">
-    <div><div class="brand">🌸 Eleya Decor</div>
-    <div style="font-size:11px;color:#6b4f5a;margin-top:3px">Декорации за специални моменти · Казанлък</div></div>
-    <div style="text-align:right">
-      <div style="font-size:10px;text-transform:uppercase;color:#6b4f5a">Оферта №</div>
-      <div style="font-size:18px;font-weight:700">${qid.slice(-6).toUpperCase()}</div>
-      <div style="font-size:11px;color:#6b4f5a;margin-top:2px">Дата: ${fmtDate(today())}</div>
-    </div>
-  </div>
-
-  <div class="info-grid">
-    <div class="info-block">
-      <div class="info-lbl">Клиент</div>
-      <div class="info-val">${cl?.name||'—'}</div>
-      ${cl?.phone?`<div style="font-size:11px;color:#6b4f5a;margin-top:2px">📞 ${cl.phone}</div>`:''}
-      ${cl?.email?`<div style="font-size:11px;color:#6b4f5a;">✉️ ${cl.email}</div>`:''}
-    </div>
-    <div class="info-block">
-      <div class="info-lbl">Събитие</div>
-      <div class="info-val">${q.event_type||'—'}</div>
-      ${q.event_date?`<div style="font-size:11px;color:#6b4f5a;margin-top:2px">📅 ${fmtDate(q.event_date)}${q.event_time?' · '+fmtTime(q.event_time):''}</div>`:''}
-      ${q.address?`<div style="font-size:11px;color:#6b4f5a;">📍 ${q.address}</div>`:''}
-      ${theme?`<div style="font-size:11px;color:#c9748a;margin-top:2px;">🎨 Тема: ${theme.name}</div>`:''}
-    </div>
-    ${q.guests?`<div class="info-block"><div class="info-lbl">Брой гости</div><div class="info-val">👥 ${q.guests} гости</div></div>`:''}
-    ${q.valid_until?`<div class="info-block"><div class="info-lbl">Валидна до</div><div class="info-val">${fmtDate(q.valid_until)}</div></div>`:''}
-  </div>
-
-  ${vizUrls.length > 0 ? `
-  <h2>🖼 Визуализации</h2>
-  <div class="viz-grid">
-    ${vizUrls.map(url => `<img src="${url}" alt="Визуализация" onerror="this.style.display='none'">`).join('')}
-  </div>` : ''}
-
-  ${items.length > 0 ? `
-  <h2>Артикули и услуги</h2>
-  <table><thead><tr><th>Описание</th><th>Раздел</th><th style="text-align:right">Бр.</th><th style="text-align:right">Ед. цена</th><th style="text-align:right">Общо</th></tr></thead>
-  <tbody>
-  ${items.map(i => `<tr>
-    <td><strong>${i.description||'—'}</strong></td>
-    <td style="color:#6b4f5a;font-size:11px">${i.section||'—'}</td>
-    <td style="text-align:right">${i.quantity}</td>
-    <td style="text-align:right">${eur(i.unit_price)}</td>
-    <td style="text-align:right;font-weight:600">${eur((i.unit_price||0)*(i.quantity||0))}</td>
-  </tr>`).join('')}
-  </tbody></table>` : ''}
-
-  ${services.length > 0 ? `
-  <h2>Допълнителни услуги</h2>
-  <div class="svc-box">
-    ${services.map(s => `<div class="svc-row"><span><strong>${s.description}</strong></span><span>${eur(s.unit_price)}</span></div>`).join('')}
-  </div>` : ''}
-
-  <div class="total-box">
-    <div class="total-row"><span>Артикули</span><span>${eur(items.reduce((s,i)=>s+(i.unit_price||0)*(i.quantity||0),0))}</span></div>
-    ${services.length>0?`<div class="total-row"><span>Услуги</span><span>${eur(services.reduce((s,i)=>s+(i.unit_price||0),0))}</span></div>`:''}
-    ${dep>0?`<div class="total-row"><span>Депозит (аванс)</span><span style="color:#c9748a">${eur(dep)}</span></div>`:''}
-    ${dep>0?`<div class="total-row"><span>Остатък</span><span>${eur(total-dep)}</span></div>`:''}
-    <div class="total-row total-final"><span>ОБЩА СУМА</span><span>${eur(total)}</span></div>
-  </div>
-
-  ${q.notes?`<div class="conditions"><strong>Бележки:</strong><br>${q.notes}</div>`:''}
-  <div class="conditions"><strong>Условия:</strong><br>
-  • Офертата е валидна до ${q.valid_until?fmtDate(q.valid_until):'7 дни от датата на издаване'}.<br>
-  ${dep>0?`• Депозитът от ${eur(dep)} е дължим при потвърждение на офертата.<br>`:''}
-  • Остатъкът се заплаща в деня на събитието.<br>
-  • При анулиране до 14 дни — депозитът се връща. До 7 дни — 50%. По-малко от 7 дни — не се връща.<br>
-  • Визуализациите са интелектуална собственост на Eleya Decor.</div>
-
-  <div class="sig">
-    <div class="sig-box">Изготвил: Eleya Decor<br><br><br>Подпис: _______________<br>Дата: _______________</div>
-    <div class="sig-box">Клиент: ${cl?.name||'_______________'}<br><br><br>Подпис: _______________<br>Дата: _______________</div>
-  </div>
-  <div class="footer">Eleya Decor · Декорации за специални моменти · Казанлък, България<br>Генерирано: ${fmtDate(today())}</div>
-  <div class="no-print" style="margin-top:18px;text-align:center">
-    <button onclick="window.print()" style="padding:10px 24px;background:#c9748a;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:14px;font-weight:600">🖨 Принтирай / PDF</button>
-  </div><\/body><\/html>`);
-  win.document.close();
-};
+// printQuote moved
 
 // ── SQL hints ────────────────────────────────
 console.log('✅ Оферти v2: Приключи·Статуси·Услуги·Теми·Визуализации·Азбука·Търсачка');
