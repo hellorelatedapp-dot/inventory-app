@@ -1637,53 +1637,7 @@ var PRODUCT_TYPES = {
   raw_material: { l:'🧪 Суровина',         cls:'bd' },
   handmade:     { l:'🌸 Handmade',         cls:'br' },
 };
-
-window.render_inventory = function(el) {
-  var q = searchQ.toLowerCase();
-  var list = S.products.filter(function(p) {
-    return !q || p.name.toLowerCase().includes(q) || (p.sku||'').toLowerCase().includes(q);
-  });
-  if (invCatF    !== 'all') list = list.filter(function(p){ return p.category_id === invCatF; });
-  if (invStatusF !== 'all') list = list.filter(function(p){ return p.status === invStatusF; });
-  var lowCount = S.products.filter(function(p){ return p.quantity <= (p.min_quantity||0); }).length;
-
-  el.innerHTML = `
-  <div class="topbar">
-    <h2>Инвентар <span style="font-size:13px;color:var(--ink-m);font-weight:400">${S.products.length}</span></h2>
-    <div class="search-wrap">
-      <svg width="13" height="13" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-      <input placeholder="Търси продукт, SKU..." value="${q}"
-        oninput="searchQ=this.value;render_inventory(document.getElementById('page-content'))">
-    </div>
-    <button class="btn btn-secondary btn-sm" onclick="openCatModal()">+ Категория</button>
-    <button class="btn btn-primary" onclick="openProductModal()">+ Продукт</button>
-  </div>
-  <div class="content">
-    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:14px">
-      <div class="tabs" style="margin:0">
-        <div class="tab ${invView==='grid'?'on':''}" onclick="invView='grid';render_inventory(document.getElementById('page-content'))">⊞ Карти</div>
-        <div class="tab ${invView==='list'?'on':''}" onclick="invView='list';render_inventory(document.getElementById('page-content'))">☰ Списък</div>
-      </div>
-      <select onchange="invCatF=this.value;render_inventory(document.getElementById('page-content'))"
-        style="padding:5px 10px;border:1.5px solid var(--border);border-radius:var(--r-sm);font-size:12px;background:var(--card);color:var(--ink)">
-        <option value="all">Всички категории</option>
-        ${S.categories.map(function(c){ return '<option value="'+c.id+'"'+(invCatF===c.id?' selected':'')+'>'+(c.icon||'')+c.name+'</option>'; }).join('')}
-      </select>
-      <select onchange="invStatusF=this.value;render_inventory(document.getElementById('page-content'))"
-        style="padding:5px 10px;border:1.5px solid var(--border);border-radius:var(--r-sm);font-size:12px;background:var(--card);color:var(--ink)">
-        <option value="all">Всички статуси</option>
-        ${Object.entries(PROD_STATUS).map(function(e){ return '<option value="'+e[0]+'"'+(invStatusF===e[0]?' selected':'')+'>'+e[1].l+'</option>'; }).join('')}
-      </select>
-      ${lowCount > 0 ? '<span class="badge br">⚠️ '+lowCount+' ниски наличности</span>' : ''}
-      <button class="btn btn-secondary btn-sm" style="margin-left:auto" onclick="exportInvCSV()">⬇ CSV</button>
-    </div>
-    ${list.length === 0
-      ? '<div class="empty-state"><div class="ico">📦</div><p>Няма продукти</p></div>'
-      : invView === 'grid'
-        ? '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(195px,1fr));gap:12px">'+list.map(function(p){ return productCard(p); }).join('')+'</div>'
-        : productTable(list)}
-  </div>`;
-};
+// render_inventory — виж отделен script блок по-долу
 
 function productCard(p) {
   var st  = PROD_STATUS[p.status] || PROD_STATUS.available;
@@ -5126,7 +5080,60 @@ function previewPublicPage() {
     }
     function showDetail(card) { card.querySelector('.btn-detail').style.display='none'; }
   \x3c/script\x3e
-  </body></html>`);
+  
+</script>
+
+<script>
+// render_inventory и printQuote — без use strict за template literals
+
+window.render_inventory = function(el) {
+  var q = searchQ.toLowerCase();
+  var list = S.products.filter(function(p) {
+    return !q || p.name.toLowerCase().includes(q) || (p.sku||'').toLowerCase().includes(q);
+  });
+  if (invCatF    !== 'all') list = list.filter(function(p){ return p.category_id === invCatF; });
+  if (invStatusF !== 'all') list = list.filter(function(p){ return p.status === invStatusF; });
+  var lowCount = S.products.filter(function(p){ return p.quantity <= (p.min_quantity||0); }).length;
+
+  el.innerHTML = `
+  <div class="topbar">
+    <h2>Инвентар <span style="font-size:13px;color:var(--ink-m);font-weight:400">${S.products.length}</span></h2>
+    <div class="search-wrap">
+      <svg width="13" height="13" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+      <input placeholder="Търси продукт, SKU..." value="${q}"
+        oninput="searchQ=this.value;render_inventory(document.getElementById('page-content'))">
+    </div>
+    <button class="btn btn-secondary btn-sm" onclick="openCatModal()">+ Категория</button>
+    <button class="btn btn-primary" onclick="openProductModal()">+ Продукт</button>
+  </div>
+  <div class="content">
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:14px">
+      <div class="tabs" style="margin:0">
+        <div class="tab ${invView==='grid'?'on':''}" onclick="invView='grid';render_inventory(document.getElementById('page-content'))">⊞ Карти</div>
+        <div class="tab ${invView==='list'?'on':''}" onclick="invView='list';render_inventory(document.getElementById('page-content'))">☰ Списък</div>
+      </div>
+      <select onchange="invCatF=this.value;render_inventory(document.getElementById('page-content'))"
+        style="padding:5px 10px;border:1.5px solid var(--border);border-radius:var(--r-sm);font-size:12px;background:var(--card);color:var(--ink)">
+        <option value="all">Всички категории</option>
+        ${S.categories.map(function(c){ return '<option value="'+c.id+'"'+(invCatF===c.id?' selected':'')+'>'+(c.icon||'')+c.name+'</option>'; }).join('')}
+      </select>
+      <select onchange="invStatusF=this.value;render_inventory(document.getElementById('page-content'))"
+        style="padding:5px 10px;border:1.5px solid var(--border);border-radius:var(--r-sm);font-size:12px;background:var(--card);color:var(--ink)">
+        <option value="all">Всички статуси</option>
+        ${Object.entries(PROD_STATUS).map(function(e){ return '<option value="'+e[0]+'"'+(invStatusF===e[0]?' selected':'')+'>'+e[1].l+'</option>'; }).join('')}
+      </select>
+      ${lowCount > 0 ? '<span class="badge br">⚠️ '+lowCount+' ниски наличности</span>' : ''}
+      <button class="btn btn-secondary btn-sm" style="margin-left:auto" onclick="exportInvCSV()">⬇ CSV</button>
+    </div>
+    ${list.length === 0
+      ? '<div class="empty-state"><div class="ico">📦</div><p>Няма продукти</p></div>'
+      : invView === 'grid'
+        ? '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(195px,1fr));gap:12px">'+list.map(function(p){ return productCard(p); }).join('')+'</div>'
+        : productTable(list)}
+  </div>`;
+};
+<\/script>
+<\/body><\/html>`);
   win.document.close();
 }
 
@@ -5979,8 +5986,9 @@ window.dbLoad = async function(key, table, order, select, opts) {
 console.log('✅ Eleya Decor Studio v2 — чиста версия заредена!');
 
 </script>
-</body>
-</html>
+<\/script>
+<\/body>
+<\/html>
 <script>
 'use strict';
 // ═══════════════════════════════════════════
